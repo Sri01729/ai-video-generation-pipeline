@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",          // Modern Node.js supports ES2020
+    "module": "commonjs",        // Node.js uses CommonJS modules
+    "outDir": "./dist",          // Compiled JS output folder
+    "rootDir": "./src",          // Source directory
+    "strict": true,              // Enable strict type-checking
+    "esModuleInterop": true,     // Fixes CommonJS/ES module interop
+    "skipLibCheck": true,        // Skip type-checking library files
+    "moduleResolution": "node",  // Required for Node.js
+    "types": ["node"]            // Include Node.js types (e.g., `process.env`)
+  },
+  "include": ["src/**/*"],       // Files to compile
+  "exclude": ["node_modules", "dist", "test"]  // Ignore these
+}

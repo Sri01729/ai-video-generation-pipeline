@@ -1,84 +1,124 @@
-# Turborepo starter
+# AI Video Generation Pipeline Monorepo
 
-This Turborepo starter is maintained by the Turborepo core team.
+## Overview
+Welcome to the AI Video Generation Pipeline! This project is a full-stack, microservices-based AI video generation pipeline, built and maintained by Sai Srinivas Alahari.
 
-## Using this example
+Features:
+- Next.js frontend (shadcn/ui, TailwindCSS)
+- Node.js/Express backend
+- Playwright-powered worker for browser automation (VoCloner, voice.ai)
+- Supabase (Postgres) for data
+- AWS Cognito (auth) & S3 (media storage)
+- Bull/Redis for job queue
+- OpenAI, AssemblyAI, VoCloner, Voice.ai integrations
+- Docker, Turborepo, pnpm workspaces, GitHub Actions CI/CD
 
-Run the following command:
+See [PROJECT_SETUP.md](./PROJECT_SETUP.md) for a deep dive into each technology, rationale, and best practices.
 
-```sh
-npx create-turbo@latest
+---
+
+## Project Structure
+```
+ai-video-generation-pipeline/
+├── apps/
+│   ├── frontend/   # Next.js app (UI, auth, dashboard)
+│   ├── backend/    # Node.js/Express API
+│   └── worker/     # Playwright automation & job processor
+├── packages/
+│   └── shared/     # Shared types/utilities
+├── .github/        # CI/CD workflows
+├── .gitignore      # Comprehensive ignore rules
+├── .env.example    # Environment variable template
+├── docker-compose.yml
+├── pnpm-workspace.yaml
+├── turbo.json      # Turborepo pipeline config
+├── PROJECT_SETUP.md
+├── CHANGELOG.md    # Release notes (see below)
+└── LICENSE         # License info
 ```
 
-## What's inside?
+---
 
-This Turborepo includes the following packages/apps:
+## Prerequisites
+- Node.js >= 18
+- pnpm (recommended)
+- Docker (for local dev/deployment)
+- Git
 
-### Apps and Packages
+---
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+## Setup
+1. **Clone the repo:**
+   ```sh
+   git clone https://github.com/Sri01729/ai-video-pipeline.git
+   cd ai-video-pipeline
+   ```
+2. **Install dependencies:**
+   ```sh
+   pnpm install
+   ```
+3. **Copy and configure environment variables:**
+   ```sh
+   cp .env.example .env
+   # Edit .env with your real credentials
+   ```
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+---
 
-### Utilities
+## Development
+- **Start all apps:**
+  ```sh
+  pnpm dev
+  ```
+- **Start a specific app:**
+  ```sh
+  pnpm --filter backend dev
+  pnpm --filter frontend dev
+  pnpm --filter worker dev
+  ```
+- **Run with Docker Compose:**
+  ```sh
+  docker-compose up --build
+  ```
 
-This Turborepo has some additional tools already setup for you:
+---
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+## Deployment
+- See Dockerfiles and `docker-compose.yml` for containerization.
+- GitHub Actions CI/CD is set up in `.github/workflows/ci.yml`.
 
-### Build
+---
 
-To build all apps and packages, run the following command:
+## Contributing
+- Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+- All code, build, and test artifacts are ignored via `.gitignore`.
+- Use Playwright for all new browser automation scripts (Puppeteer is not used).
 
-```
-cd my-turborepo
-pnpm build
-```
+---
 
-### Develop
+## Maintainer
+- **Sai Srinivas Alahari** ([GitHub](https://github.com/Sri01729))
 
-To develop all apps and packages, run the following command:
+---
 
-```
-cd my-turborepo
-pnpm dev
-```
+## User Workflow
+See the "Example User Workflow" section in [PROJECT_SETUP.md](./PROJECT_SETUP.md) for a step-by-step of what happens from user auth to final video output.
 
-### Remote Caching
+---
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+## TODO
+- Add more E2E tests for edge cases
+- Improve error handling and monitoring
+- Add more API docs (OpenAPI/Swagger)
+- Polish UI/UX for dashboard
+- [Add your own ideas here!]
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+---
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+## CHANGELOG
+See [CHANGELOG.md](./CHANGELOG.md) for release notes and version history.
 
-```
-cd my-turborepo
-npx turbo login
-```
+---
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-npx turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+## License
+See [LICENSE](./LICENSE) for license details. All rights reserved.
