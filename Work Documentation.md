@@ -478,3 +478,113 @@ await attachAudioToVideo({
 - File paths must be correct relative to the script's working directory or use absolute paths.
 
 ---
+
+## Step 5: Transcribe Audio and Generate SRT Subtitles (AssemblyAI)
+
+After producing the final mixed audio, the next step is to generate subtitles. The worker service uses AssemblyAI to transcribe the audio and outputs an SRT subtitle file for use in the video pipeline.
+
+### Process
+1. **Inputs:**
+   - Mixed audio file (e.g., `final-mixed.mp3`)
+2. **Transcription Logic:**
+   - The audio is uploaded to AssemblyAI via their Node SDK.
+   - The service transcribes the audio with word-level timestamps.
+   - The transcript is converted to SRT format, grouping words by sentence or every ~7 words.
+3. **Output:**
+   - An SRT subtitle file (e.g., `final-mixed.srt`) is produced for use in the next pipeline step.
+
+### Example Code
+```ts
+import 'dotenv/config';
+import { transcribeAndGenerateSrt } from './utils/generateSrtFromAudio';
+
+await transcribeAndGenerateSrt(
+  'public/audiofiles/final-mixed.mp3',
+  'public/subtitles/final-mixed.srt'
+);
+```
+
+- Requires a valid `ASSEMBLYAI_API_KEY` in your `.env` file.
+- The script will poll until the transcript is ready, then write the SRT file.
+- SRT output is used in the next step to burn subtitles into the video.
+
+---
+
+## Step 6: Burn Styled ASS Subtitles into Video
+
+After generating an ASS subtitle file with custom style (centered, big, purple font), the final step is to hardcode these subtitles into the video using ffmpeg.
+
+### Process
+1. **Inputs:**
+   - Video file (e.g., `final-video.mp4`)
+   - ASS subtitle file (e.g., `final-mixed.ass`)
+2. **Burning Logic:**
+   - ffmpeg is used with the `-vf ass=...` filter to overlay the styled subtitles onto the video.
+   - The ASS style can be customized for font, size, color, and alignment. For purple, use `PrimaryColour: &H00800080`.
+3. **Output:**
+   - A new video file (e.g., `final-video-with-subs.mp4`) with hardcoded, styled subtitles.
+
+### Example Code
+```ts
+import { burnSubtitles } from './utils/burnSubtitles';
+
+await burnSubtitles({
+  videoPath: 'public/videos/final-video.mp4',
+  assPath: 'public/subtitles/final-mixed.ass',
+  outputPath: 'public/videos/final-video-with-subs.mp4',
+});
+```
+
+- The ASS style line for purple, big, centered subtitles:
+  ```ass
+  Style: Default,Arial,60,&H00800080,&H000000FF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,1,3,0,2,30,30,30,1
+  ```
+- Change the `Alignment` value for different vertical positions (2=bottom, 5=center, 8=top).
+- The output video will have the subtitles burned in with the specified style.
+
+---
+
+## Pipeline Orchestration: aiVideoPipeline
+
+To automate the entire AI video generation process, we created a single orchestrator function called `aiVideoPipeline`. This function sequentially combines all the core steps:
+
+1. **Script Generation** (OpenAI):
+   - Generates a video script from a user prompt.
+2. **Voice Generation** (VoCloner):
+   - Automates TTS voice creation using the generated script.
+3. **Audio Mixing** (ffmpeg):
+   - Mixes the generated voice with background music, volume-balanced.
+4. **Attach Audio to Video** (ffmpeg):
+   - Loops/trims the background video to match audio duration and attaches the mixed audio.
+5. **Subtitle Generation** (AssemblyAI + ASS):
+   - Transcribes the final audio, generates animated ASS subtitles with custom style/animation.
+6. **Burn Subtitles** (ffmpeg):
+   - Hardcodes the styled subtitles into the final video.
+
+### Concept & Rationale
+- **Sequential Design:**
+  - Each step depends on the output of the previous step (e.g., you can't mix audio until you have both voice and BGM).
+  - The pipeline uses `await` and explicit file existence checks to ensure that no step runs unless the previous one succeeded.
+- **Error Handling:**
+  - If any step fails (e.g., file not created, ffmpeg error), the pipeline halts and logs the error, preventing wasted compute and debugging headaches.
+- **Extensibility:**
+  - Each step is a standalone utility, making it easy to swap out, test, or parallelize for batch jobs in the future.
+- **Robustness:**
+  - The pipeline creates all necessary directories, checks for file outputs, and provides clear logs for each stage.
+
+### Example Usage
+```ts
+await aiVideoPipeline({
+  prompt: 'Explain JavaScript as Thanos in 60 seconds.',
+  bgmPath: 'public/ai-video-bgm.mp3',
+  videoPath: 'public/videos/background.mp4',
+  outputDir: 'public/finalOutput',
+});
+```
+
+### Why This Approach?
+- **Maintainability:** Each function is focused and testable.
+- **Reliability:** Sequential, fail-fast design ensures no silent errors or missing outputs.
+- **Clarity:** The pipeline is easy to read, debug, and extend for new features (e.g., watermarking, analytics, etc).
+
+---
