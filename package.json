@@ -1,6 +1,8 @@
 {
   "name": "ai-video-generation-pipeline",
   "private": true,
+
+"packageManager": "pnpm@8.6.3",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
