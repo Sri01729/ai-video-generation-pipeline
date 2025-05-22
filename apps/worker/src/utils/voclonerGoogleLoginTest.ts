@@ -1,5 +1,4 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import 'dotenv/config';
 import { chromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 
@@ -10,7 +9,7 @@ chromium.use(stealth);
 
 const userDataDir = '/tmp/playwright-user-data';
 
-async function testVoClonerGoogleLoginFull() {
+export default async function generateVoice(script: string, voicePath: string) {
   const browser = await chromium.launchPersistentContext(userDataDir, {
     headless: false,
     acceptDownloads: true,
@@ -21,7 +20,7 @@ async function testVoClonerGoogleLoginFull() {
     await page.goto('https://vocloner.com/login.php');
     await page.click('xpath=/html/body/section/div/div/div/div[1]/div/div/a');
     console.log('clicked button');
-    // Wait for Google email field in the same tab
+     // Wait for Google email field in the same tab
     // await page.waitForSelector('input[type="email"]', { timeout: 50000 });
     // await page.fill('input[type="email"]', process.env.GOOGLE_EMAIL!);
     // await page.click('button:has-text("Next")');
@@ -33,54 +32,27 @@ async function testVoClonerGoogleLoginFull() {
     // await page.waitForTimeout(5000);
     console.log('Google login automation complete!');
 
-    // Click the element at /html/body/section/div/div[2]
     await page.click('xpath=/html/body/section/div/div[2]');
     console.log('Clicked Thanos voice element');
 
-    // Enter text in the field with id 'text'
     await page.waitForSelector('xpath=//*[@id="text"]', { timeout: 20000 });
-    await page.fill('xpath=//*[@id="text"]', `The universe... is finite... its resources, finite...
-
-And yet... developers continue to build... more and more...
-
-Chaos... inefficiency... threads everywhere...
-
-Until... I found it...
-
-Node.js...
-
-A single-threaded... non-blocking... event-driven system...
-
-Simple... yet powerful...
-
-While others rely on threads to scale...
-Node... uses a loop...
-
-An event loop...
-
-It listens... it waits... it reacts...
-
-Like a patient predator... it never wastes effort...`);
-
+    await page.fill('xpath=//*[@id="text"]', script);
     console.log('Entered text in TTS field');
 
-    // Click the button at //*[@id="ttsForm"]/button
+     // Click the button at //*[@id="ttsForm"]/button
     await page.click('xpath=//*[@id="ttsForm"]/button');
     console.log('Clicked TTS submit button');
 
-    // Wait for 1 minute
-    await page.waitForTimeout(20000);
+    await page.waitForTimeout(60000);
     console.log('Done waiting 1 minute after TTS submit.');
 
-    // Click the download button
     const [download] = await Promise.all([
       page.waitForEvent('download'),
       page.click('xpath=//*[@id="downloadBtn"]'),
     ]);
 
-    const savePath = `/Users/srinualahari/Documents/Projects/AI-Video-generation/ai-video-generation-pipeline/public/audiofiles/thanos-${Date.now()}.mp3`;
-    await download.saveAs(savePath);
-    console.log('Downloaded to:', savePath);
+    await download.saveAs(voicePath);
+    console.log('Downloaded to:', voicePath);
 
     await browser.close();
   } catch (err) {
@@ -91,8 +63,8 @@ Like a patient predator... it never wastes effort...`);
 }
 
 // Run the test
-(async () => {
-  console.log('GOOGLE_EMAIL:', process.env.GOOGLE_EMAIL);
-  console.log('GOOGLE_PASSWORD:', process.env.GOOGLE_PASSWORD);
-  await testVoClonerGoogleLoginFull();
-})();
+// (async () => {
+//   console.log('GOOGLE_EMAIL:', process.env.GOOGLE_EMAIL);
+//   console.log('GOOGLE_PASSWORD:', process.env.GOOGLE_PASSWORD);
+//   await generateVoice('Hello, world!', 'public/audiofiles/test-voice.mp3');
+// })();
