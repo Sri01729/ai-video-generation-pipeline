@@ -5,7 +5,7 @@ export async function mixAudio({
   voicePath,
   musicPath,
   outputPath,
-  musicVolumeDb = -15,
+  musicVolumeDb = -25,
 }: {
   voicePath: string;
   musicPath: string;
@@ -29,13 +29,13 @@ export async function mixAudio({
   });
 }
 
-async function main() {
-  await mixAudio({
-    voicePath: '../../public/audiofiles/thanos-explaining-javascript.mp3',
-    musicPath: '../../public/ai-video-bgm.mp3',
-    outputPath: '../../public/audiofiles/final-mixed.mp3',
-    musicVolumeDb: -15,
-  });
-}
+// async function main() {
+//   await mixAudio({
+//     voicePath: '../../public/audiofiles/thanos-explaining-javascript.mp3',
+//     musicPath: '../../public/ai-video-bgm.mp3',
+//     outputPath: '../../public/audiofiles/final-mixed.mp3',
+//     musicVolumeDb: -15,
+//   });
+// }
 
-main();
+// main();
