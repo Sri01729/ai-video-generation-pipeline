@@ -371,11 +371,28 @@ const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
 4. **Worker: Pipeline Processing**
    - Worker service picks up the job from the queue and runs the pipeline:
      1. **Script Generation**: Calls OpenAI to generate a video script from the user's prompt.
+
      2. **Voice Generation**: Uses Playwright to automate VoCloner, uploads script, downloads generated audio.
-     3. **Audio Enhancement**: Automates voice.ai, uploads audio, downloads enhanced audio.
-     4. **Caption Generation**: Sends audio to AssemblyAI for transcription and word-level timestamps.
-     5. **Video Assembly**: Uses ffmpeg to combine background video, enhanced audio, and captions into a final video file.
-     6. **Upload**: Uploads the final video to S3, updates Supabase with the video URL and status.
+
+     3. **Add Background Music to Audio**
+       - 🎵 Use an NPM package like `ffmpeg-static` + `fluent-ffmpeg` to:
+          - Mix voice-over audio with background music (volume-balanced)
+          - Output a single `.mp3` or `.wav` audio track
+          - Optional: Let user choose the genre (calm, epic, playful, etc.)
+
+     4. **Attach Audio to Background Video**
+        - 📹 Use FFmpeg to:
+          - Loop or trim a background video to match audio duration
+          - Attach the mixed audio
+          - Output a `.mp4` video with synced visuals
+
+     5. **Generate & Burn Subtitles into Video**
+        - ✍️ Transcribe final audio using AssemblyAI (with word-level timestamps)
+          - Convert transcript into `.srt` or `.ass` format
+          - Use FFmpeg to hardcode subtitles into the video:
+            ```bash
+            ffmpeg -i input.mp4 -vf subtitles=subtitles.srt -c:a copy output.mp4
+            ```
 
 5. **Progress Tracking**
    - Backend exposes endpoints for job/video status.
