@@ -1,5 +1,7 @@
 import ffmpegPath from 'ffmpeg-static';
 import ffmpeg from 'fluent-ffmpeg';
+import fs from 'fs';
+import path from 'path';
 
 export async function burnSubtitles({
   videoPath,
@@ -25,14 +27,18 @@ export async function burnSubtitles({
   });
 }
 
-//Example usage
-async function main() {
-  await burnSubtitles({
-    videoPath: '../../public/videos/final-video.mp4',
-    assPath: '../../public/subtitles/final-mixed.ass',
-    outputPath: '../../public/videos/final-video-with-subs.mp4',
-  });
-  console.log('ASS subtitles burned into video.');
-
-}
-main();
+// // Example usage as a script:
+// if (require.main === module) {
+//   (async () => {
+//     const runDir = fs.readFileSync('run_dir.txt', 'utf8').trim();
+//     const inputVideo = path.join(runDir, 'final', 'final_output.mp4');
+//     const assPath = path.join(runDir, 'subtitles', 'final-mixed.ass');
+//     const outputVideo = path.join(runDir, 'final', 'final_with_subs.mp4');
+//     await burnSubtitles({
+//       videoPath: inputVideo,
+//       assPath,
+//       outputPath: outputVideo,
+//     });
+//     console.log('✅ Subtitles burned in. Output:', outputVideo);
+//   })();
+// }
