@@ -47,6 +47,7 @@ import path from 'path';
 import axios from 'axios';
 import 'dotenv/config';
 import slugify from 'slugify';
+import OpenAI from 'openai';
 
 interface Scene {
   id: number;
@@ -67,12 +68,14 @@ class ScriptImageGenerator {
   apiKey: string;
   outputDir: string;
   baseImagePrompt: string;
+  openai: OpenAI;
 
   constructor(apiKey: string, outputDir: string = 'public/images') {
     this.apiKey = apiKey;
     this.outputDir = outputDir;
     this.baseImagePrompt =
       'flat-style educational illustration, clean design, soft colors, light blue or white background';
+    this.openai = new OpenAI({ apiKey: this.apiKey });
   }
 
   async init(): Promise<void> {
@@ -89,53 +92,62 @@ class ScriptImageGenerator {
   }
 
     async getScenePromptsFromGPT4(script: string): Promise<{ chunk: string; scene: string; prompt: string }[]> {
-     const systemPrompt = `You are a visual scene breakdown engine designed to generate realistic image prompts from explainer scripts.
+     const systemPrompt = `
+You are a visual scene breakdown engine designed to generate image prompts from explainer scripts using real world meme-style images only.
 
 Your task:
 1. Receive a short script (approx. 850–900 characters) intended for a 60-second voiceover.
-2. Break the script into exactly 10 coherent, logically flowing visual scenes.
-3. For each scene, return:
-   - \"chunk\": the portion of the script for that scene (1–2 sentences)
-   - \"scene\": the scene text
-   - \"prompt\": a DALL·E 3-ready prompt describing a realistic photographic image for that chunk
-   - \"filename\": an image name like \"{chunk-text}.png\" so that the images are named like the chunks
+2. Break the script into a reasonable number of coherent, logically flowing visual scenes (typically 10).
+3. For each chunk, use only the exact chunk text — do not infer or add ideas.
+4. For each chunk, return:
+   - "type": always set to "meme"
+   - "chunk": the portion of the script (1–2 sentences)
+   - "scene": the same as "chunk" (for downstream compatibility)
+   - "prompt": a gpt-image-1-ready image prompt in meme style that visually represents only what's in the chunk — no extra details
+   - "filename": a simplified, filename-safe version of the chunk
 
 ---
 
-  CHUNKING STRATEGY:
-- Divide the script evenly into 10 meaningful parts
-- Each chunk must describe one complete visual idea or step in the narrative
-- Maintain story flow and don't split metaphors or actions mid-sentence
+CHUNKING RULES:
+- Each chunk must represent exactly one visual moment or idea from the script
+- Do not combine ideas across chunks or infer extra context
+- Do not split a single thought or metaphor across two chunks
+- ❗ Do not add any extra scenes or content beyond what is present in the input script. If the script ends early, stop.
 
 ---
 
-  IMAGE STYLE GUIDELINES:
-- Realistic photography style (DSLR quality)
-- Natural lighting and believable human environments (e.g., restaurants, homes, offices, parks)
-- Avoid illustration, cartoon, surrealism, or overly stylized elements
+IMAGE STYLE GUIDELINES:
+- Always generate meme-style images
+- Use expressive characters, funny scenarios, tech/dev culture, or metaphor-based workplace humor
+- Visual storytelling only — do not generate slides with plain text or captions
+- Convey explanations using characters, actions, scenes, props, or metaphors — not written text
+- Use speech bubbles or signs **only when needed** for humor or clarity, not as replacements for narration
 
 ---
 
- OUTPUT FORMAT:
-Return a JSON array with exactly 10 objects, each with:
-- \"chunk\": the script sentence(s) for this visual moment
-- \"scene\": the scene text
-- \"prompt\": the corresponding realistic image prompt
-- \"filename\": a file name matching the chunk order
+OUTPUT FORMAT:
+Return a JSON array with each object containing:
+- "type": always "meme"
+- "chunk": the original script chunk
+- "scene": same as chunk
+- "prompt": a DALL·E 3-compatible image prompt strictly based on this chunk only
+- "filename": filename-safe, lowercase, hyphenated version of the chunk (max 50 characters)
 
-Format example:
+Example:
 [
   {
-    "chunk": "You place your order and sit back, doing other things.",
-    "prompt": "Photorealistic image of a man seated at a modern restaurant counter, casually scrolling his phone. Behind the counter, chefs in white uniforms cook in an open kitchen. Ambient warm lighting.",
-    "filename": "You place your order and sit back, doing other things..png"
-  },
-  ...
+    "type": "meme",
+    "chunk": "Frontend sends the request and chills while backend sweats.",
+    "scene": "Frontend sends the request and chills while backend sweats.",
+    "prompt": "Scene of a relaxed frontend developer lounging in a beanbag chair, sipping coffee. In another room, a backend developer sweats at a server rack. Add labels 'Frontend' and 'Backend' as signs or labels on desks.",
+    "filename": "frontend-chills-backend-sweats.png"
+  }
 ]
 
-Do not return markdown or commentary — only the pure JSON array.
-
+❗ Do not include markdown, commentary, or explanations. Return the JSON array only.
 `;
+
+
     const userPrompt = `Script:\n${script}`;
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
@@ -212,31 +224,19 @@ Do not return markdown or commentary — only the pure JSON array.
 
   async generateImageOpenAI(prompt: string, sceneId: number, filename: string, chunk: string, scene: string): Promise<ImageResult | null> {
     try {
-      console.log(`🎨 Generating image for scene ${sceneId} with OpenAI...`);
-      const response = await axios({
-        method: 'POST',
-        url: 'https://api.openai.com/v1/images/generations',
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        data: {
-          model: 'dall-e-3',
-          prompt: prompt,
-          n: 1,
-          size: '1024x1024',
-          quality: 'standard',
-        },
+      console.log(`🎨 Generating image for scene ${sceneId} with OpenAI SDK...`);
+      const result = await this.openai.images.generate({
+        model: 'gpt-image-1',
+        prompt: prompt,
+        size: '1024x1536',
+        quality: 'low',
+        n: 1
       });
-      if (response.data.data && response.data.data.length > 0) {
-        const imageUrl = response.data.data[0].url;
-        const imageResponse = await axios({
-          method: 'GET',
-          url: imageUrl,
-          responseType: 'arraybuffer',
-        });
+      if (result.data && result.data.length > 0 && result.data[0].b64_json) {
+        const image_base64 = result.data[0].b64_json;
+        const image_bytes = Buffer.from(image_base64, 'base64');
         const filepath = path.join(this.outputDir, filename);
-        await fs.writeFile(filepath, imageResponse.data);
+        await fs.writeFile(filepath, image_bytes);
         console.log(`✅ Image saved: ${filename}`);
         return { sceneId, filename, filepath, prompt, chunk, scene };
       } else {
@@ -266,26 +266,85 @@ Do not return markdown or commentary — only the pure JSON array.
       throw new Error('Failed to get scene prompts from GPT-4: ' + (err instanceof Error ? err.message : err));
     }
     console.log(`📝 Processing ${scenePrompts.length} scenes`);
-    const results: ImageResult[] = [];
-    for (const [idx, { chunk, scene, prompt }] of scenePrompts.entries()) {
-      const chunkText = chunk || scene || `scene_${idx + 1}`;
-      const filename = `${slugify(chunkText.substring(0, 60), { lower: true, strict: true })}.png`;
-      console.log(`\n--- Processing Scene ${idx + 1} ---`);
-      const sceneText = scene || chunkText;
-      console.log(`Chunk: ${chunkText.substring(0, 100)}...`);
-      console.log(`Scene: ${sceneText.substring(0, 100)}...`);
-      console.log(`Prompt: ${prompt.substring(0, 150)}...`);
-      const result = useOpenAI
-        ? await this.generateImageOpenAI(prompt, idx + 1, filename, chunkText, scene)
-        : await this.generateImageStabilityAI(prompt, idx + 1, filename, chunkText, scene);
-      if (result) {
-        results.push(result);
+    // --- BATCHING LOGIC (commented out for now, keep for future use) ---
+    /*
+    const BATCH_SIZE = 5;
+    const allResults: ImageResult[] = [];
+    if (useOpenAI) {
+      const batchStart = Date.now();
+      console.log(`[BATCH] Starting parallel image generation at ${new Date(batchStart).toISOString()}`);
+      for (let i = 0; i < scenePrompts.length; i += BATCH_SIZE) {
+        const batch = scenePrompts.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(
+          batch.map(async ({ chunk, scene, prompt }, idx) => {
+            const globalIdx = i + idx + 1;
+            const start = Date.now();
+            console.log(`[START] Scene ${globalIdx} at ${new Date(start).toISOString()}`);
+            const chunkText = chunk || scene || `scene_${globalIdx}`;
+            const filename = `${slugify(chunkText.substring(0, 60), { lower: true, strict: true })}.png`;
+            const sceneText = scene || chunkText;
+            const result = await this.generateImageOpenAI(prompt, globalIdx, filename, chunkText, scene);
+            const end = Date.now();
+            console.log(`[DONE]  Scene ${globalIdx} at ${new Date(end).toISOString()} (took ${(end - start) / 1000}s)`);
+            return result;
+          })
+        );
+        allResults.push(...(results.filter(Boolean) as ImageResult[]));
       }
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const batchEnd = Date.now();
+      console.log(`\n🎉 Generation complete! Created ${allResults.length} images`);
+      console.log(`[BATCH] All images done at ${new Date(batchEnd).toISOString()} (total time: ${(batchEnd - batchStart) / 1000}s)`);
+      await this.generateReport(allResults, script.length);
+      return allResults;
+    */
+    // --- END BATCHING LOGIC ---
+    // --- SIMPLE LIMIT TO 5 IMAGES ---
+    const limitedScenePrompts = scenePrompts.slice(0, 5);
+    if (useOpenAI) {
+      const batchStart = Date.now();
+      console.log(`[BATCH] Starting parallel image generation at ${new Date(batchStart).toISOString()}`);
+      const results = await Promise.all(
+        limitedScenePrompts.map(async ({ chunk, scene, prompt }, idx) => {
+          const start = Date.now();
+          console.log(`[START] Scene ${idx + 1} at ${new Date(start).toISOString()}`);
+          const chunkText = chunk || scene || `scene_${idx + 1}`;
+          const filename = `${slugify(chunkText.substring(0, 60), { lower: true, strict: true })}.png`;
+          const sceneText = scene || chunkText;
+          const result = await this.generateImageOpenAI(prompt, idx + 1, filename, chunkText, scene);
+          const end = Date.now();
+          console.log(`[DONE]  Scene ${idx + 1} at ${new Date(end).toISOString()} (took ${(end - start) / 1000}s)`);
+          return result;
+        })
+      );
+      const batchEnd = Date.now();
+      const filtered = results.filter(Boolean) as ImageResult[];
+      console.log(`\n🎉 Generation complete! Created ${filtered.length} images`);
+      console.log(`[BATCH] All images done at ${new Date(batchEnd).toISOString()} (total time: ${(batchEnd - batchStart) / 1000}s)`);
+      await this.generateReport(filtered, script.length);
+      return filtered;
+    } else {
+      // Serial for Stability AI (unchanged)
+      const results: ImageResult[] = [];
+      for (const [idx, { chunk, scene, prompt }] of scenePrompts.entries()) {
+        const chunkText = chunk || scene || `scene_${idx + 1}`;
+        const filename = `${slugify(chunkText.substring(0, 60), { lower: true, strict: true })}.png`;
+        const sceneText = scene || chunkText;
+        const start = Date.now();
+        console.log(`[START] Scene ${idx + 1} at ${new Date(start).toISOString()}`);
+        const result = await this.generateImageStabilityAI(prompt, idx + 1, filename, chunkText, scene);
+        const end = Date.now();
+        if (result) {
+          results.push(result);
+        }
+        console.log(`[DONE]  Scene ${idx + 1} at ${new Date(end).toISOString()} (took ${(end - start) / 1000}s)`);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+      const batchEnd = Date.now();
+      console.log(`\n🎉 Generation complete! Created ${results.length} images`);
+      console.log(`[BATCH] All images done at ${new Date(batchEnd).toISOString()}`);
+      await this.generateReport(results, script.length);
+      return results;
     }
-    console.log(`\n🎉 Generation complete! Created ${results.length} images`);
-    await this.generateReport(results, script.length);
-    return results;
   }
 
   async generateReport(results: ImageResult[], scriptLength: number): Promise<void> {
@@ -309,47 +368,34 @@ Do not return markdown or commentary — only the pure JSON array.
 export default ScriptImageGenerator;
 
 // Usage example
-if (require.main === module) {
-  (async () => {
-    const API_KEY = process.env.OPENAI_API_KEY ?? '';
-    const USE_OPENAI = true;
-    const generator = new ScriptImageGenerator(API_KEY);
-    const scriptPath = path.join(__dirname, '../../../../public/scripts/script.txt');
-    let incomingScript: string;
-    try {
-      incomingScript = await fs.readFile(scriptPath, 'utf-8');
-    } catch (err) {
-      throw new Error(`Failed to read script.txt: ${err instanceof Error ? err.message : err}`);
-    }
-
-    let scenePrompts: { chunk: string; scene: string; prompt: string }[];
-    try {
-      scenePrompts = await generator.getScenePromptsFromGPT4(incomingScript);
-    } catch (err) {
-      throw new Error('Failed to get scene prompts from GPT-4: ' + (err instanceof Error ? err.message : err));
-    }
-
-    await generator.init();
-    const results: ImageResult[] = [];
-    for (const [idx, { chunk, scene, prompt }] of scenePrompts.entries()) {
-      const chunkText = chunk || scene || `scene_${idx + 1}`;
-      const filename = `${slugify(chunkText.substring(0, 60), { lower: true, strict: true })}.png`;
-      console.log(`\n--- Processing Scene ${idx + 1} ---`);
-      const sceneText = scene || chunkText;
-      console.log(`Chunk: ${chunkText.substring(0, 100)}...`);
-      console.log(`Scene: ${sceneText.substring(0, 100)}...`);
-      console.log(`Prompt: ${prompt.substring(0, 150)}...`);
-      const result = await generator.generateImageOpenAI(prompt, idx + 1, filename, chunkText, scene);
-      if (result) results.push(result);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-    console.log(`\n🎉 Generation complete! Created ${results.length} images`);
-    await generator.generateReport(results, incomingScript.length);
-    console.log('\n🏁 Final Results:');
-    console.log(`✅ Successfully generated ${results.length} images`);
-    console.log(`📁 Images saved in: ${generator.outputDir}`);
-  })();
-}
+// if (require.main === module) {
+//   (async () => {
+//     const API_KEY = process.env.OPENAI_API_KEY ?? '';
+//     // Read runDir from run_dir.txt
+//     const runDir = (await fs.readFile('run_dir.txt', 'utf-8')).trim();
+//     const scriptDir = path.join(runDir, 'script');
+//     const imageOutDir = path.join(runDir, 'images');
+//     // Find the first .txt file in scriptDir
+//     const scriptFiles = await fs.readdir(scriptDir);
+//     const scriptFile = scriptFiles.find(f => f.endsWith('.txt'));
+//     if (!scriptFile) {
+//       console.error('No script file found in script folder');
+//       process.exit(1);
+//     }
+//     const scriptPath = path.join(scriptDir, scriptFile);
+//     let script: string;
+//     try {
+//       script = await fs.readFile(scriptPath, 'utf-8');
+//     } catch (err) {
+//       console.error(
+//         `Failed to read script.txt: ${err instanceof Error ? err.message : err}`
+//       );
+//       process.exit(1);
+//     }
+//     const generator = new ScriptImageGenerator(API_KEY, imageOutDir);
+//     await generator.generateImagesFromScript(script, '', true);
+//   })();
+// }
 
 // Package.json dependencies needed:
 /*
