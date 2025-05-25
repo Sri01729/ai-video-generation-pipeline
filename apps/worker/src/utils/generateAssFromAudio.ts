@@ -1,6 +1,7 @@
 import { AssemblyAI } from 'assemblyai';
 import fs from 'fs';
 import 'dotenv/config';
+import path from 'path';
 
 const client = new AssemblyAI({
   apiKey: process.env.ASSEMBLYAI_API_KEY!,
@@ -40,7 +41,7 @@ PlayResY: 1080
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00222222,&H00000000,-1,0,0,0,100,100,0,0,1,3,0,5,60,60,40,1
+Style: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00222222,&H00000000,-1,0,0,0,100,100,0,0,1,3,0,2,60,60,40,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -69,13 +70,12 @@ function wordsToAss(words: any[]): string {
   return ass;
 }
 
+// async function main() {
+//   const runDir = fs.readFileSync('run_dir.txt', 'utf8').trim();
+//   const audioPath = path.join(runDir, 'audio', 'final-mixed.mp3');
+//   const srtPath = path.join(runDir, 'subtitles', 'final-mixed.ass');
+//   await transcribeAndGenerateSrt(audioPath, srtPath);
+//   console.log('ASS generation complete. Output:', srtPath);
+// }
 
-async function main() {
-  await transcribeAndGenerateSrt(
-    '../../public/audiofiles/final-mixed.mp3',
-    '../../public/subtitles/final-mixed.ass'
-  );
-  console.log('ASS generation complete.');
-}
-
-main();
+// main();
