@@ -1,11 +1,13 @@
 import ffmpegPath from 'ffmpeg-static';
 import ffmpeg from 'fluent-ffmpeg';
+import path from 'path';
+import fs from 'fs';
 
 export async function mixAudio({
   voicePath,
   musicPath,
   outputPath,
-  musicVolumeDb = -25,
+  musicVolumeDb = -5,
 }: {
   voicePath: string;
   musicPath: string;
@@ -30,12 +32,22 @@ export async function mixAudio({
 }
 
 // async function main() {
-//   await mixAudio({
-//     voicePath: '../../public/audiofiles/thanos-explaining-javascript.mp3',
-//     musicPath: '../../public/ai-video-bgm.mp3',
-//     outputPath: '../../public/audiofiles/final-mixed.mp3',
-//     musicVolumeDb: -15,
-//   });
+//   try {
+//     const runDir = fs.readFileSync('run_dir.txt', 'utf8').trim();
+//     const voicePath = path.join(runDir, 'audio', 'voice-ultron.mp3');
+//     const musicPath = path.join(__dirname, '../../public/bgm/ai-video-bgm.mp3');
+//     const outputPath = path.join(runDir, 'audio', 'final-mixed.mp3');
+//     console.log('Starting audio mix...');
+//     await mixAudio({
+//       voicePath,
+//       musicPath,
+//       outputPath,
+//       musicVolumeDb: -5,
+//     });
+//     console.log('Audio mix complete! Output:', outputPath);
+//   } catch (err) {
+//     console.error('Audio mix failed:', err);
+//   }
 // }
 
 // main();
