@@ -588,3 +588,38 @@ await aiVideoPipeline({
 - **Clarity:** The pipeline is easy to read, debug, and extend for new features (e.g., watermarking, analytics, etc).
 
 ---
+
+## Output Directory Setup (OutputManager)
+
+### Purpose
+To ensure all pipeline outputs are organized, reproducible, and easy to locate, we implemented a dedicated output directory structure managed by an `OutputManager` utility.
+
+### Implementation Details
+- **Config File:**
+  - `output.config.ts` at the project root defines the base output directory and subfolders.
+  - Example:
+    ```ts
+    export const outputConfig = {
+      baseDir: 'ai-video-generation-pipeline/results',
+      subfolders: ['script', 'audio', 'images', 'video', 'subtitles'],
+    };
+    ```
+- **OutputManager Utility:**
+  - Reads config and creates a new run folder for each pipeline execution.
+  - Run folder is named using a sanitized keyword from the prompt and a timestamp (e.g., `explain_ai_May24_10-35am`).
+  - Subfolders for each pipeline step are created inside the run folder.
+  - If the run folder already exists, creation is skipped and a log is printed.
+  - All results are now always inside `ai-video-generation-pipeline/results/`.
+
+### Example Usage
+```ts
+import { OutputManager } from './utils/outputManager';
+const om = new OutputManager();
+const runDir = om.setupRunDirs(prompt);
+```
+
+### Benefits
+- Keeps all outputs for each run grouped and easy to find
+- Prevents accidental overwrites
+- Configurable and extensible for future needs
+- Ensures reproducibility and clarity in the pipeline
