@@ -1,6 +1,7 @@
 import { OutputManager } from './outputManager';
 import generateVideoScript from './openaiScriptGenerator';
 import generateVoiceWithVoCloner from './generateVoiceWithVoCloner';
+import { generateDiaTts } from './diaTtsGenerator';
 import { mixAudio } from './mixAudio';
 import { transcribeAndGenerateSrt } from './generateAssFromAudio';
 import ScriptImageGenerator from './scriptToImageGenerator';
@@ -12,7 +13,7 @@ import { execSync } from 'child_process';
 
 async function runPipeline() {
   // 1. Script Generation
-  const prompt = "Tell me about a interesting fact about nikola tesla";
+  const prompt = "What if all the data centers in the world gets bombed?";
   const om = new OutputManager();
   const runDir = om.setupRunDirs(prompt);
   fs.writeFileSync('run_dir.txt', runDir, 'utf8');
@@ -21,9 +22,9 @@ async function runPipeline() {
   const scriptDir = path.join(runDir, 'script');
   await generateVideoScript({
     prompt,
-    persona: 'A wonderful storyteller',
-   style: 'Engaging, clear, interesting',
-    maxLength: 900,
+    persona: 'A calm, intelligent narrator with a hint of unease',
+    style: 'Suspenseful, reflective, cinematic',
+    maxLength: 950,
     model: 'gpt-4.1-nano',
     outputDir: scriptDir,
   });
@@ -35,6 +36,25 @@ async function runPipeline() {
   // 3. Voice Generation
   const voicePath = path.join(runDir, 'audio', 'voice-Gojo.mp3');
   await generateVoiceWithVoCloner(script, voicePath, 'Gojo');
+
+  // // 3. Voice Generation(using dia tts)
+  // console.log('Step 3: Generating voice...');
+  // const voicePath = path.join(runDir, 'audio', 'voice-luffy-zoro.mp3');
+  // const voiceClonePath = path.join(__dirname, '../../public/vocals/luffyandzorobutwithswitchedvoicescleanversion [vocals].mp3');
+
+  // const apiKey = process.env.SEGMIND_API_KEY;
+  // if (!apiKey) {
+  //   throw new Error('SEGMIND_API_KEY is not set in environment variables');
+  // }
+
+  // await generateDiaTts({
+  //   text: script,
+  //   outputPath: voicePath,
+  //   apiKey,
+  //   temperature: 1.3,
+  //   speed_factor: 0.85,
+  //   input_audio: voiceClonePath
+  // });
 
   // 4. Audio Mixing
   const musicPath = path.join(__dirname, '../../public/bgm/ai-video-bgm.mp3');
