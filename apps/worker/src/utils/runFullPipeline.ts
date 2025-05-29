@@ -11,9 +11,33 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 
+// Config array for script-to-image prompt generation
+const IMAGE_PROMPT_CONFIGS = [
+  {
+    provider: 'openai',
+    model: 'gpt-4.1-nano',
+    apiKey: process.env.OPENAI_API_KEY || '',
+  },
+  {
+    provider: 'google',
+    model: 'models/gemini-2.0-flash',
+    apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || '',
+  },
+  {
+    provider: 'anthropic',
+    model: 'claude-3-opus-20240229',
+    apiKey: process.env.ANTHROPIC_API_KEY || '',
+  },
+  {
+    provider: 'xai',
+    model: 'grok-1',
+    apiKey: process.env.XAI_API_KEY || '',
+  },
+];
+
 async function runPipeline() {
   // 1. Script Generation
-  const prompt = "What if all the data centers in the world gets bombed?";
+  const prompt = "what if human brain is connected to the internet?";
   const om = new OutputManager();
   const runDir = om.setupRunDirs(prompt);
   fs.writeFileSync('run_dir.txt', runDir, 'utf8');
@@ -24,9 +48,11 @@ async function runPipeline() {
     prompt,
     persona: 'A calm, intelligent narrator with a hint of unease',
     style: 'Suspenseful, reflective, cinematic',
-    maxLength: 950,
+    maxLength: 900,
     model: 'gpt-4.1-nano',
+    provider: 'openai',
     outputDir: scriptDir,
+    promptStyle: 'what-if'
   });
 
   // Now read the script file
@@ -72,9 +98,16 @@ async function runPipeline() {
 
   // 6. Script-to-Image Generation
   const imageOutDir = path.join(runDir, 'images');
-  const API_KEY = process.env.OPENAI_API_KEY ?? '';
-  const generator = new ScriptImageGenerator(API_KEY, imageOutDir);
-  await generator.generateImagesFromScript(script, '', true);
+  // Use the first config in the array
+  const { provider, model, apiKey } = IMAGE_PROMPT_CONFIGS[0];
+  const generator = new ScriptImageGenerator(apiKey, imageOutDir);
+  await generator.generateImagesFromScript(
+    script,
+    '',
+    true, // always use OpenAI for image generation
+    provider as 'openai' | 'google' | 'anthropic' | 'cohere',
+    model
+  );
 
   // 7. Stitch Images to Video (no audio)
   execSync(`npx ts-node ${path.join(__dirname, 'stitchImagesToVideo.ts')}`, { stdio: 'inherit' });
