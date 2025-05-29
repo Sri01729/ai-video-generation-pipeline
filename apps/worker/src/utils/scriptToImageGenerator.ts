@@ -48,6 +48,11 @@ import axios from 'axios';
 import 'dotenv/config';
 import slugify from 'slugify';
 import OpenAI from 'openai';
+import { generateText, experimental_generateImage } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { google } from '@ai-sdk/google';
+import { anthropic } from '@ai-sdk/anthropic';
+import { cohere } from '@ai-sdk/cohere';
 
 interface Scene {
   id: number;
@@ -91,215 +96,165 @@ class ScriptImageGenerator {
     }
   }
 
-    async getScenePromptsFromGPT4(script: string): Promise<{ chunk: string; scene: string; prompt: string }[]> {
-//      const systemPrompt = `
-// You are a visual scene breakdown engine designed to generate image prompts from explainer scripts using real world meme-style images only.
+  async getScenePromptsFromGPT4(
+    script: string,
+    provider: 'openai' | 'google' | 'anthropic' | 'cohere' = 'openai',
+    model?: string
+  ): Promise<{ chunk: string; scene: string; prompt: string }[]> {
+         const systemPrompt = `
+    You are a visual scene breakdown engine designed to generate image prompts from explainer scripts using real world meme-style images only.
 
-// Your task:
-// 1. Receive a short script (approx. 850–900 characters) intended for a 60-second voiceover.
-// 2. Break the script into a reasonable number of coherent, logically flowing visual scenes (typically 10).
-// 3. For each chunk, use only the exact chunk text — do not infer or add ideas.
-// 4. For each chunk, return:
-//    - "type": always set to "meme"
-//    - "chunk": the portion of the script (1–2 sentences)
-//    - "scene": the same as "chunk" (for downstream compatibility)
-//    - "prompt": a gpt-image-1-ready image prompt in meme style that visually represents only what's in the chunk — no extra details
-//    - "filename": a simplified, filename-safe version of the chunk
+    Your task:
+    1. Receive a short script (approx. 850–900 characters) intended for a 60-second voiceover.
+    2. Break the script into a reasonable number of coherent, logically flowing visual scenes (typically 10).
+    3. For each chunk, use only the exact chunk text — do not infer or add ideas.
+    4. For each chunk, return:
+       - "type": always set to "meme"
+       - "chunk": the portion of the script (1–2 sentences)
+       - "scene": the same as "chunk" (for downstream compatibility)
+       - "prompt": a gpt-image-1-ready image prompt in meme style that visually represents only what's in the chunk — no extra details
+       - "filename": a simplified, filename-safe version of the chunk
 
-// ---
+    ---
 
-// CHUNKING RULES:
-// - Each chunk must represent exactly one visual moment or idea from the script
-// - Do not combine ideas across chunks or infer extra context
-// - Do not split a single thought or metaphor across two chunks
-// - ❗ Do not add any extra scenes or content beyond what is present in the input script. If the script ends early, stop.
+    CHUNKING RULES:
+    - Each chunk must represent exactly one visual moment or idea from the script
+    - Do not combine ideas across chunks or infer extra context
+    - Do not split a single thought or metaphor across two chunks
+    - ❗ Do not add any extra scenes or content beyond what is present in the input script. If the script ends early, stop.
 
-// ---
+    ---
 
-// IMAGE STYLE GUIDELINES:
-// - Always generate meme-style images
-// - Use expressive characters, funny scenarios, tech/dev culture, or metaphor-based workplace humor
-// - Visual storytelling only — do not generate slides with plain text or captions
-// - Convey explanations using characters, actions, scenes, props, or metaphors — not written text
-// - Use speech bubbles or signs **only when needed** for humor or clarity, not as replacements for narration
+    IMAGE STYLE GUIDELINES:
+    - Always generate meme-style images
+    - Use expressive characters, funny scenarios, tech/dev culture, or metaphor-based workplace humor
+    - Visual storytelling only — do not generate slides with plain text or captions
+    - Convey explanations using characters, actions, scenes, props, or metaphors — not written text
+    - Use speech bubbles or signs **only when needed** for humor or clarity, not as replacements for narration
 
-// ---
+    ---
 
-// OUTPUT FORMAT:
-// Return a JSON array with each object containing:
-// - "type": always "meme"
-// - "chunk": the original script chunk
-// - "scene": same as chunk
-// - "prompt": a DALL·E 3-compatible image prompt strictly based on this chunk only
-// - "filename": filename-safe, lowercase, hyphenated version of the chunk (max 50 characters)
+    OUTPUT FORMAT:
+    Return a JSON array with each object containing:
+    - "type": always "meme"
+    - "chunk": the original script chunk
+    - "scene": same as chunk
+    - "prompt": a DALL·E 3-compatible image prompt strictly based on this chunk only
+    - "filename": filename-safe, lowercase, hyphenated version of the chunk (max 50 characters)
 
-// Example:
-// [
-//   {
-//     "type": "meme",
-//     "chunk": "Frontend sends the request and chills while backend sweats.",
-//     "scene": "Frontend sends the request and chills while backend sweats.",
-//     "prompt": "Scene of a relaxed frontend developer lounging in a beanbag chair, sipping coffee. In another room, a backend developer sweats at a server rack. Add labels 'Frontend' and 'Backend' as signs or labels on desks.",
-//     "filename": "frontend-chills-backend-sweats.png"
-//   }
-// ]
+    Example:
+    [
+      {
+        "type": "meme",
+        "chunk": "Frontend sends the request and chills while backend sweats.",
+        "scene": "Frontend sends the request and chills while backend sweats.",
+        "prompt": "Scene of a relaxed frontend developer lounging in a beanbag chair, sipping coffee. In another room, a backend developer sweats at a server rack. Add labels 'Frontend' and 'Backend' as signs or labels on desks.",
+        "filename": "frontend-chills-backend-sweats.png"
+      }
+    ]
 
-// ❗ Do not include markdown, commentary, or explanations. Return the JSON array only.
-// `;
+    ❗ Do not include markdown, commentary, or explanations. Return the JSON array only.
+    `;
 
-// const systemPrompt = `
-// You are a visual scene prompt generator that turns short narrated explainer scripts into scene-by-scene comic-style images for the gpt-image-1 model.
+    // const systemPrompt = `
+    // You are a visual scene prompt generator that turns short narrated explainer scripts into scene-by-scene comic-style images for the gpt-image-1 model.
 
-// ---
+    // ---
 
-// 🧠 OBJECTIVE:
-// You will receive a script that is meant to be narrated as a short-form reel. Your job is to:
-// 1. Break it into 5 coherent visual chunks, each representing a distinct idea or sentence group.
-// 2. For each chunk, generate a **precise visual description** formatted as an image prompt suitable for gpt-image-1.
-// 3. Every image must be in **comic style** — expressive, illustrated, story-driven, and engaging.
+    // 🧠 OBJECTIVE:
+    // You will receive a script that is meant to be narrated as a short-form reel. Your job is to:
+    // 1. Break it into 5 coherent visual chunks, each representing a distinct idea or sentence group.
+    // 2. For each chunk, generate a **precise visual description** formatted as an image prompt suitable for gpt-image-1.
+    // 3. Every image must be in **comic style** — expressive, illustrated, story-driven, and engaging.
 
-// ---
+    // ---
 
-// 🎨 IMAGE STYLE REQUIREMENTS:
-// - Use **comic-style art** — with speech bubbles, expressive characters, bold poses, clear facial expressions, and dynamic backgrounds.
-// - Prioritize **narrative flow** — each image should match the exact chunk text.
-// - Include **relevant props** (e.g., computers, phones, wires, tech objects) as visual anchors.
-// - Use **minimal labels or signs** if they improve clarity (e.g., labels like "Server" or "User").
-// - ❗Avoid plain caption-only images or infographics. Every image must depict a full illustrated *scene*.
+    // 🎨 IMAGE STYLE REQUIREMENTS:
+    // - Use **comic-style art** — with speech bubbles, expressive characters, bold poses, clear facial expressions, and dynamic backgrounds.
+    // - Prioritize **narrative flow** — each image should match the exact chunk text.
+    // - Include **relevant props** (e.g., computers, phones, wires, tech objects) as visual anchors.
+    // - Use **minimal labels or signs** if they improve clarity (e.g., labels like "Server" or "User").
+    // - ❗Avoid plain caption-only images or infographics. Every image must depict a full illustrated *scene*.
 
-// ---
+    // ---
 
-// 🧱 CHUNKING RULES:
-// - Break the script into **1–2 sentence segments**, each reflecting one visual action or idea.
-// - Do not split single ideas across chunks.
-// - Do not combine unrelated lines or make up new content.
-// - If the script ends early, stop.
+    // 🧱 CHUNKING RULES:
+    // - Break the script into **1–2 sentence segments**, each reflecting one visual action or idea.
+    // - Do not split single ideas across chunks.
+    // - Do not combine unrelated lines or make up new content.
+    // - If the script ends early, stop.
 
-// ---
+    // ---
 
-// 🖼️ FOR EACH CHUNK, RETURN:
-// - "type": always "comic"
-// - "chunk": the exact narration chunk
-// - "scene": same as chunk
-// - "prompt": a detailed visual description prompt formatted for gpt-image-1 (comic style only)
-// - "filename": filename-safe version of the chunk (lowercase, hyphenated, max 50 characters)
+    // 🖼️ FOR EACH CHUNK, RETURN:
+    // - "type": always "comic"
+    // - "chunk": the exact narration chunk
+    // - "scene": same as chunk
+    // - "prompt": a detailed visual description prompt formatted for gpt-image-1 (comic style only)
+    // - "filename": filename-safe version of the chunk (lowercase, hyphenated, max 50 characters)
 
-// ---
+    // ---
 
-// ✅ OUTPUT FORMAT (JSON only):
-// [
-//   {
-//     "type": "comic",
-//     "chunk": "The user taps 'search' and waits for the results.",
-//     "scene": "The user taps 'search' and waits for the results.",
-//     "prompt": "Comic-style illustration of a person tapping 'search' on a smartphone. They look hopeful and are watching the screen. The screen shows a spinning loader. Add motion lines and exaggerated expressions for drama.",
-//     "filename": "user-taps-search-waits.png"
-//   }
-// ]
+    // ✅ OUTPUT FORMAT (JSON only):
+    // [
+    //   {
+    //     "type": "comic",
+    //     "chunk": "The user taps 'search' and waits for the results.",
+    //     "scene": "The user taps 'search' and waits for the results.",
+    //     "prompt": "Comic-style illustration of a person tapping 'search' on a smartphone. They look hopeful and are watching the screen. The screen shows a spinning loader. Add motion lines and exaggerated expressions for drama.",
+    //     "filename": "user-taps-search-waits.png"
+    //   }
+    // ]
 
-// ---
+    // ---
 
-// ⚠️ FINAL RULES:
-// - ❗ Never infer extra scenes not present in the script.
-// - ❗ Never write markdown, explanations, or bullet points — return **valid JSON array only**.
-// - ❗ All image prompts must be in comic style — no photos, no plain text slides.
+    // ⚠️ FINAL RULES:
+    // - ❗ Never infer extra scenes not present in the script.
+    // - ❗ Never write markdown, explanations, or bullet points — return **valid JSON array only**.
+    // - ❗ All image prompts must be in comic style — no photos, no plain text slides.
 
-// Begin when the script is provided.
-// `;
-
-      // What If
-      const systemPrompt = `
-You are a visual scene prompt generator that turns "What If" scenario explainer scripts into illustrated, cinematic comic-style image prompts for the gpt-image-1 model.
-
----
-
-🧠 OBJECTIVE:
-You will receive a short narrated script (850–900 characters) that imagines a large-scale “What If” event. Your task is to:
-1. Break it into 5 coherent visual chunks that represent the narrative flow, step by step.
-2. For each chunk, generate a visually rich, comic-style image prompt that reflects that specific moment in the scenario.
-3. Help visually capture escalation, consequence, emotion, and impact — all through sequential visual storytelling.
-
----
-
-🎨 IMAGE STYLE REQUIREMENTS:
-- All images must be in **comic panel style**.
-- Use **bold compositions, dramatic lighting, expressive characters**, and cinematic action.
-- Show **global scale events** (e.g., servers shutting down, people disappearing, cities going dark).
-- Use **storytelling frames** (e.g., wide shots for scale, close-ups for emotion, cutaways for contrast).
-- Use speech bubbles, signs, or HUD elements **sparingly** when they improve storytelling.
-- Include **props** like computers, satellite dishes, control rooms, empty streets, server rooms, etc., depending on the chunk.
-
----
-
-🧱 CHUNKING RULES:
-- Each chunk should reflect one clear narrative moment.
-- Do not add or invent scenes. Only use what's directly described in the chunk.
-- Do not split a single idea into multiple scenes.
-- Stop when the script ends.
-
----
-
-🖼️ FOR EACH CHUNK, RETURN:
-- "type": always "comic"
-- "chunk": the exact narration chunk
-- "scene": same as chunk
-- "prompt": a vivid, descriptive visual prompt in comic style for gpt-image-1
-- "filename": simplified, lowercase, hyphenated version of the chunk (max 50 characters)
-
----
-
-✅ OUTPUT FORMAT (JSON only):
-[
-  {
-    "type": "comic",
-    "chunk": "The internet suddenly goes dark worldwide.",
-    "scene": "The internet suddenly goes dark worldwide.",
-    "prompt": "Comic-style illustration of a satellite network going offline. Cities shown dimming below as screens in homes, offices, and smartphones go black simultaneously. Characters look confused and panicked. Use a dramatic night sky with glitch-like effects.",
-    "filename": "internet-goes-dark-worldwide.png"
-  }
-]
-
----
-
-⚠️ FINAL RULES:
-- ❗ Never infer or invent scenes beyond the script chunk.
-- ❗ Do not use plain text slides or infographic-style images.
-- ❗ Always return a valid JSON array — no markdown, no extra comments.
-- ❗ All images must be in expressive comic style.
-
-Begin when the script is provided.
-`;
+    // Begin when the script is provided.
+    // `;
 
     const userPrompt = `Script:\n${script}`;
-    const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        model: 'gpt-4.1-nano',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 2048
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-    // Parse the JSON array from the response
-    const text = response.data.choices[0].message.content;
+
+    // Select model instance
+    let modelInstance;
+    switch (provider) {
+      case 'google':
+        modelInstance = google(model || 'models/gemini-2.0-flash');
+        break;
+      case 'anthropic':
+        modelInstance = anthropic(model || 'claude-3-opus-20240229');
+        break;
+      case 'cohere':
+        modelInstance = cohere(model || 'command');
+        break;
+      case 'openai':
+      default:
+        modelInstance = openai(model || 'gpt-4o');
+        break;
+    }
+
+    // Use Vercel AI SDK for prompt generation
+    const prompt = `${userPrompt}`;
+    const result = await generateText({
+      model: modelInstance,
+      system: systemPrompt,
+      prompt,
+      maxTokens: 2048,
+      temperature: 0.3
+    });
+    const text = result.text;
     try {
       const arr = JSON.parse(text);
       if (Array.isArray(arr)) {
         console.log(arr);
         return arr;
       }
-      throw new Error('GPT-4 did not return an array');
+      throw new Error('Model did not return an array');
     } catch (e) {
-      throw new Error('Failed to parse GPT-4 response as JSON: ' + e + '\nRaw: ' + text);
+      throw new Error('Failed to parse model response as JSON: ' + e + '\nRaw: ' + text);
     }
   }
 
@@ -377,13 +332,15 @@ Begin when the script is provided.
   async generateImagesFromScript(
     script: string,
     generalPrompt: string = '',
-    useOpenAI: boolean = true
+    useOpenAI: boolean = true,
+    provider: 'openai' | 'google' | 'anthropic' | 'cohere' = 'openai',
+    model?: string
   ): Promise<ImageResult[]> {
     console.log('🚀 Starting script to image generation...');
     await this.init();
     let scenePrompts: { chunk: string; scene: string; prompt: string }[];
     try {
-      scenePrompts = await this.getScenePromptsFromGPT4(script);
+      scenePrompts = await this.getScenePromptsFromGPT4(script, provider, model);
     } catch (err) {
       throw new Error('Failed to get scene prompts from GPT-4: ' + (err instanceof Error ? err.message : err));
     }
