@@ -6,6 +6,9 @@ import rateLimit from 'express-rate-limit';
 import type { Request, Response, Express } from 'express';
 import logger from './utils/logger';
 import { runFullPipeline } from '../../worker/src/utils/runFullPipeline';
+import Bull from 'bull';
+import { createBullBoard } from 'bull-board';
+import { BullAdapter } from 'bull-board/bullAdapter';
 
 dotenv.config();
 
@@ -78,6 +81,15 @@ app.post('/api/generate', async (req: Request, res: Response) => {
     }
   }
 });
+
+// Bull queue for UI
+const testQueue = new Bull('test-queue', { redis: process.env.REDIS_URL || 'redis://localhost:6379' });
+
+const { router: bullBoardRouter } = createBullBoard([
+  new BullAdapter(testQueue)
+]);
+
+app.use('/admin/queues', bullBoardRouter);
 
 // Error logging (should be after all routes)
 app.use((err: Error, _req: Request, res: Response, _next: Function) => {
