@@ -21,7 +21,7 @@ export async function burnSubtitles({
         '-c:a copy'
       ])
       .output(outputPath)
-      .on('end', resolve)
+      .on('end', (_stdout: any, _stderr: any) => resolve())
       .on('error', reject)
       .run();
   });
