@@ -297,6 +297,31 @@ async function validateEnvironment(provider: AIProvider = 'openai') {
   }
 }
 
+function buildSystemPrompt(persona: string, style: string, maxLength: number, promptStyle?: string) {
+  switch (promptStyle) {
+    case 'dev-meme':
+      return DEV_MEME_PROMPT(persona, style, maxLength);
+    case 'documentary':
+      return DOCUMENTARY_PROMPT(persona, style, maxLength);
+    case 'dialogue':
+      return DIALOGUE_PROMPT(persona, style, maxLength);
+    case 'narrator':
+      return NARRATOR_PROMPT(persona, style, maxLength);
+    default:
+      return WHAT_IF_REALISTIC_PROMPT(persona, style, maxLength);
+  }
+}
+
+function writeScriptToFile(script: string, persona: string | undefined, outputDir: string) {
+  const personaPart = sanitize((persona?.split(' ')[0] || 'script'));
+  const ts = getTimestamp();
+  const fileName = `${personaPart}_${ts}.txt`;
+  const filePath = path.join(outputDir, fileName);
+  fs.writeFileSync(filePath, script, 'utf-8');
+  console.log('Script generated and saved to:', filePath);
+  return filePath;
+}
+
 export async function generateVideoScriptStream(config: ScriptGenConfig) {
   const provider = config.provider || 'openai';
   await validateEnvironment(provider);
@@ -305,25 +330,7 @@ export async function generateVideoScriptStream(config: ScriptGenConfig) {
   const style = config.style || 'memes, sarcasm, relatable developer humor';
   const maxLength = config.maxLength || 700;
   const modelInstance = getAIProvider(provider, config.model);
-  // Choose the appropriate prompt based on the style
-  let systemPrompt;
-  switch (config.promptStyle) {
-    case 'dev-meme':
-      systemPrompt = DEV_MEME_PROMPT(persona, style, maxLength);
-      break;
-    case 'documentary':
-      systemPrompt = DOCUMENTARY_PROMPT(persona, style, maxLength);
-      break;
-    case 'dialogue':
-      systemPrompt = DIALOGUE_PROMPT(persona, style, maxLength);
-      break;
-    case 'narrator':
-      systemPrompt = NARRATOR_PROMPT(persona, style, maxLength);
-      break;
-    default:
-      systemPrompt = WHAT_IF_REALISTIC_PROMPT(persona, style, maxLength);
-  }
-
+  const systemPrompt = buildSystemPrompt(persona, style, maxLength, config.promptStyle);
   const prompt = `${systemPrompt}\n\n${config.prompt}`;
 
   try {
@@ -361,12 +368,7 @@ export default async function generateVideoScript(config: ScriptGenConfig): Prom
     for await (const chunk of stream) {
       fullText += chunk;
     }
-    const personaPart = sanitize((config.persona?.split(' ')[0] || 'script'));
-    const ts = getTimestamp();
-    const fileName = `${personaPart}_${ts}.txt`;
-    const filePath = path.join(config.outputDir, fileName);
-    fs.writeFileSync(filePath, fullText, 'utf-8');
-    console.log('Script generated and saved to:', filePath);
+    const filePath = writeScriptToFile(fullText, config.persona, config.outputDir);
     return { script: fullText, filePath };
   }
 
@@ -374,26 +376,7 @@ export default async function generateVideoScript(config: ScriptGenConfig): Prom
   const style = config.style || 'memes, sarcasm, relatable developer humor';
   const maxLength = config.maxLength || 700;
   const modelInstance = getAIProvider(provider, config.model);
-
-  // Choose the appropriate prompt based on the style
-  let systemPrompt;
-  switch (config.promptStyle) {
-    case 'dev-meme':
-      systemPrompt = DEV_MEME_PROMPT(persona, style, maxLength);
-      break;
-    case 'documentary':
-      systemPrompt = DOCUMENTARY_PROMPT(persona, style, maxLength);
-      break;
-    case 'dialogue':
-      systemPrompt = DIALOGUE_PROMPT(persona, style, maxLength);
-      break;
-    case 'narrator':
-      systemPrompt = NARRATOR_PROMPT(persona, style, maxLength);
-      break;
-    default:
-      systemPrompt = WHAT_IF_REALISTIC_PROMPT(persona, style, maxLength);
-  }
-
+  const systemPrompt = buildSystemPrompt(persona, style, maxLength, config.promptStyle);
   const prompt = `${systemPrompt}\n\n${config.prompt}`;
 
   const result = await generateText({
@@ -408,42 +391,37 @@ export default async function generateVideoScript(config: ScriptGenConfig): Prom
     throw new Error('No script generated');
   }
 
-  const personaPart = sanitize((config.persona?.split(' ')[0] || 'script'));
-  const ts = getTimestamp();
-  const fileName = `${personaPart}_${ts}.txt`;
-  const filePath = path.join(config.outputDir, fileName);
-  fs.writeFileSync(filePath, result.text, 'utf-8');
-  console.log('Script generated and saved to:', filePath);
+  const filePath = writeScriptToFile(result.text, config.persona, config.outputDir);
   return { script: result.text, filePath };
 }
 
 // Example usage:
-if (require.main === module) {
-  (async () => {
-    const prompt = "say hello to me";
-    const om = new OutputManager();
-    const runDir = om.setupRunDirs(prompt);
+// if (require.main === module) {
+//   (async () => {
+//     const prompt = "say hello to me";
+//     const om = new OutputManager();
+//     const runDir = om.setupRunDirs(prompt);
 
-    const config: ScriptGenConfig = {
-      prompt,
-      persona: "medical expert",
-      style: "clinical and precise, with clear time markers",
-      maxLength: 900,
-      model: "models/gemini-2.0-flash", // Using Claude 2 for medical accuracy
-      provider: "google", // Specify the AI provider
-      outputDir: path.join(runDir, 'script'),
-      stream: true,
-      promptStyle: 'documentary' // Better for medical explanations
-    };
+//     const config: ScriptGenConfig = {
+//       prompt,
+//       persona: "medical expert",
+//       style: "clinical and precise, with clear time markers",
+//       maxLength: 900,
+//       model: "models/gemini-2.0-flash", // Using Claude 2 for medical accuracy
+//       provider: "google", // Specify the AI provider
+//       outputDir: path.join(runDir, 'script'),
+//       stream: true,
+//       promptStyle: 'documentary' // Better for medical explanations
+//     };
 
-    if (!fs.existsSync(config.outputDir)) {
-      fs.mkdirSync(config.outputDir, { recursive: true });
-    }
+//     if (!fs.existsSync(config.outputDir)) {
+//       fs.mkdirSync(config.outputDir, { recursive: true });
+//     }
 
-    const { script, filePath } = await generateVideoScript(config);
-    console.log("Script generated and saved to:", filePath);
-    console.log("---\n" + script);
-    fs.writeFileSync('run_dir.txt', runDir, 'utf8');
-    console.log('RUN_DIR:', runDir);
-  })();
-}
+//     const { script, filePath } = await generateVideoScript(config);
+//     console.log("Script generated and saved to:", filePath);
+//     console.log("---\n" + script);
+//     fs.writeFileSync('run_dir.txt', runDir, 'utf8');
+//     console.log('RUN_DIR:', runDir);
+//   })();
+// }
