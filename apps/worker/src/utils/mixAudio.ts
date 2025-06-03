@@ -25,7 +25,7 @@ export async function mixAudio({
       ])
       .outputOptions('-map', '[aout]')
       .output(outputPath)
-      .on('end', resolve)
+      .on('end', (_stdout :any, _stderr:any) => resolve())
       .on('error', reject)
       .run();
   });
