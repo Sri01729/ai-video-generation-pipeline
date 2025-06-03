@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { OutputManager } from './outputManager';
 import generateVideoScript from './openaiScriptGenerator';
 import generateVoiceWithVoCloner from './generateVoiceWithVoCloner';
@@ -35,10 +36,26 @@ const IMAGE_PROMPT_CONFIGS = [
   },
 ];
 
-async function runPipeline() {
+export async function runFullPipeline({
+  prompt,
+  persona,
+  style,
+  maxLength,
+  model,
+  provider,
+  promptStyle
+}: {
+  prompt: string;
+  persona: string;
+  style: string;
+  maxLength: number;
+  model: string;
+  provider: string;
+  promptStyle: 'dev-meme' | 'documentary' | 'dialogue' | 'narrator' | 'what-if';
+}): Promise<string> {
   // 1. Script Generation
-  const prompt = "what if human brain is connected to the internet?";
   const om = new OutputManager();
+  const outputDir = 'results';
   const runDir = om.setupRunDirs(prompt);
   fs.writeFileSync('run_dir.txt', runDir, 'utf8');
 
@@ -46,13 +63,13 @@ async function runPipeline() {
   const scriptDir = path.join(runDir, 'script');
   await generateVideoScript({
     prompt,
-    persona: 'A calm, intelligent narrator with a hint of unease',
-    style: 'Suspenseful, reflective, cinematic',
-    maxLength: 900,
-    model: 'gpt-4.1-nano',
-    provider: 'openai',
+    persona,
+    style,
+    maxLength,
+    model,
+    provider: provider as 'openai' | 'google' | 'anthropic' | 'cohere' | undefined,
     outputDir: scriptDir,
-    promptStyle: 'what-if'
+    promptStyle
   });
 
   // Now read the script file
@@ -98,15 +115,14 @@ async function runPipeline() {
 
   // 6. Script-to-Image Generation
   const imageOutDir = path.join(runDir, 'images');
-  // Use the first config in the array
-  const { provider, model, apiKey } = IMAGE_PROMPT_CONFIGS[0];
+  const { provider: imgProvider, model: imgModel, apiKey } = IMAGE_PROMPT_CONFIGS[0];
   const generator = new ScriptImageGenerator(apiKey, imageOutDir);
   await generator.generateImagesFromScript(
     script,
     '',
-    true, // always use OpenAI for image generation
-    provider as 'openai' | 'google' | 'anthropic' | 'cohere',
-    model
+    true,
+    imgProvider as 'openai' | 'google' | 'anthropic' | 'cohere',
+    imgModel
   );
 
   // 7. Stitch Images to Video (no audio)
@@ -122,16 +138,32 @@ async function runPipeline() {
   });
 
   // 9. Burn Subtitles
+  const finalWithSubs = path.join(runDir, 'final', 'final_video_with_audio_and_subs.mp4');
   await burnSubtitles({
     videoPath: finalVideo,
     assPath: srtPath,
-    outputPath: path.join(runDir, 'final', 'final_video_with_audio_and_subs.mp4'),
+    outputPath: finalWithSubs,
   });
 
-  console.log('✅ Full pipeline complete! Output:', path.join(runDir, 'final', 'final_with_subs.mp4'));
+  return finalWithSubs;
 }
 
-runPipeline().catch(err => {
-  console.error('Pipeline failed:', err);
-  process.exit(1);
-});
+// if (require.main === module) {
+//   (async () => {
+//     try {
+//       const result = await runFullPipeline({
+//         prompt: 'how the zip file works',
+//         persona: 'excellent tech educator in simple terms',
+//         style: 'tech narrative',
+//         maxLength: 900,
+//         model: 'gpt-4.1-nano',
+//         provider: 'openai',
+//         promptStyle: 'narrator'
+//       });
+//       console.log('Pipeline finished. Output:', result);
+//     } catch (err) {
+//       console.error('Pipeline failed:', err);
+//       process.exit(1);
+//     }
+//   })();
+// }
