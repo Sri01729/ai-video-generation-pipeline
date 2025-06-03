@@ -9,6 +9,7 @@ import { runFullPipeline } from '../../worker/src/utils/runFullPipeline';
 import Bull from 'bull';
 import { createBullBoard } from 'bull-board';
 import { BullAdapter } from 'bull-board/bullAdapter';
+import { addVideoJob, videoQueue } from './queues/videoQueue';
 
 dotenv.config();
 
@@ -83,13 +84,41 @@ app.post('/api/generate', async (req: Request, res: Response) => {
 });
 
 // Bull queue for UI
-const testQueue = new Bull('test-queue', { redis: process.env.REDIS_URL || 'redis://localhost:6379' });
-
 const { router: bullBoardRouter } = createBullBoard([
-  new BullAdapter(testQueue)
+  new BullAdapter(videoQueue)
 ]);
 
 app.use('/admin/queues', bullBoardRouter);
+
+app.post('/api/video/job', async (req: Request, res: Response) => {
+  try {
+    const job = await addVideoJob(req.body);
+    res.json({ success: true, jobId: job.id });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.get('/api/video/job/:id', async (req: Request, res: Response) => {
+  try {
+    const job = await videoQueue.getJob(req.params.id);
+    if (!job) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+    const state = await job.getState();
+    const progress = job.progress();
+    const result = job.returnvalue;
+    res.json({
+      success: true,
+      jobId: job.id,
+      state,
+      progress,
+      result
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
 
 // Error logging (should be after all routes)
 app.use((err: Error, _req: Request, res: Response, _next: Function) => {

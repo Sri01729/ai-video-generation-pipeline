@@ -39,9 +39,9 @@ STRUCTURE:
 STYLE GUIDE:
 - Use meme language, dev lingo, and casual phrasing
 - Roast common misunderstandings or pain points
-- Don't be afraid of CAPS, ellipses, or overdramatic phrasing
-- Emojis are fine if it fits the joke (but optional)
-- Avoid robotic or overly formal tone
+- No emojis, markdown, or formatting styles
+- Keep sentences clear, with proper punctuation and natural flow
+- Break longer content into well-spaced, readable paragraphs
 
 ---
 

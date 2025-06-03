@@ -52,8 +52,9 @@ export async function runFullPipeline({
   model: string;
   provider: string;
   promptStyle: 'dev-meme' | 'documentary' | 'dialogue' | 'narrator' | 'what-if';
-}): Promise<string> {
+}, onProgress?: (percent: number, step: string) => void): Promise<string> {
   // 1. Script Generation
+  onProgress?.(5, 'Script Generation');
   const om = new OutputManager();
   const outputDir = 'results';
   const runDir = om.setupRunDirs(prompt);
@@ -71,14 +72,17 @@ export async function runFullPipeline({
     outputDir: scriptDir,
     promptStyle
   });
+  onProgress?.(15, 'Script Generated');
 
   // Now read the script file
   const scriptFiles = fs.readdirSync(scriptDir).filter(f => f.endsWith('.txt'));
   const script = fs.readFileSync(path.join(scriptDir, scriptFiles[0]), 'utf8');
 
-  // 3. Voice Generation
+  // 2. Voice Generation
+  onProgress?.(25, 'Voice Generation');
   const voicePath = path.join(runDir, 'audio', 'voice-Gojo.mp3');
   await generateVoiceWithVoCloner(script, voicePath, 'Gojo');
+  onProgress?.(35, 'Voice Generated');
 
   // // 3. Voice Generation(using dia tts)
   // console.log('Step 3: Generating voice...');
@@ -99,7 +103,8 @@ export async function runFullPipeline({
   //   input_audio: voiceClonePath
   // });
 
-  // 4. Audio Mixing
+  // 3. Audio Mixing
+  onProgress?.(45, 'Audio Mixing');
   const musicPath = path.join(__dirname, '../../public/bgm/ai-video-bgm.mp3');
   const mixedPath = path.join(runDir, 'audio', 'final-mixed.mp3');
   await mixAudio({
@@ -108,12 +113,16 @@ export async function runFullPipeline({
     outputPath: mixedPath,
     musicVolumeDb: -15,
   });
+  onProgress?.(55, 'Audio Mixed');
 
-  // 5. Subtitle Generation
+  // 4. Subtitle Generation
+  onProgress?.(60, 'Subtitle Generation');
   const srtPath = path.join(runDir, 'subtitles', 'final-mixed.ass');
   await transcribeAndGenerateSrt(mixedPath, srtPath);
+  onProgress?.(70, 'Subtitles Generated');
 
-  // 6. Script-to-Image Generation
+  // 5. Script-to-Image Generation
+  onProgress?.(75, 'Image Generation');
   const imageOutDir = path.join(runDir, 'images');
   const { provider: imgProvider, model: imgModel, apiKey } = IMAGE_PROMPT_CONFIGS[0];
   const generator = new ScriptImageGenerator(apiKey, imageOutDir);
@@ -124,11 +133,15 @@ export async function runFullPipeline({
     imgProvider as 'openai' | 'google' | 'anthropic' | 'cohere',
     imgModel
   );
+  onProgress?.(85, 'Images Generated');
 
-  // 7. Stitch Images to Video (no audio)
+  // 6. Stitch Images to Video (no audio)
+  onProgress?.(90, 'Video Assembly');
   execSync(`npx ts-node ${path.join(__dirname, 'stitchImagesToVideo.ts')}`, { stdio: 'inherit' });
+  onProgress?.(92, 'Images Stitched to Video');
 
-  // 8. Attach Audio to Video
+  // 7. Attach Audio to Video
+  onProgress?.(95, 'Attaching Audio to Video');
   const videoNoAudio = path.join(runDir, 'video', 'video_no_audio.mp4');
   const finalVideo = path.join(runDir, 'final', 'final_video_with_audio.mp4');
   await attachAudioToVideo({
@@ -136,14 +149,17 @@ export async function runFullPipeline({
     audioPath: mixedPath,
     outputPath: finalVideo,
   });
+  onProgress?.(97, 'Audio Attached');
 
-  // 9. Burn Subtitles
+  // 8. Burn Subtitles
+  onProgress?.(99, 'Burning Subtitles');
   const finalWithSubs = path.join(runDir, 'final', 'final_video_with_audio_and_subs.mp4');
   await burnSubtitles({
     videoPath: finalVideo,
     assPath: srtPath,
     outputPath: finalWithSubs,
   });
+  onProgress?.(100, 'Done');
 
   return finalWithSubs;
 }

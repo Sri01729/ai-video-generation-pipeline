@@ -1,5 +1,101 @@
 # Feature Implementation Order – AI Video Generation Pipeline
 
+## Features & Changes Implemented (as of 2024-06-10)
+
+### 1. Monorepo & Tooling
+- pnpm workspaces, Turborepo for caching/build orchestration
+- Shared types and utility packages
+- Prettier, ESLint, and pre-commit hooks for code quality
+
+### 2. Frontend (Vite + React)
+- **Vite** is used as the build tool (not Next.js)
+- React 18, TailwindCSS, shadcn/ui for UI primitives
+- Modern dashboard UI for video/job submission and status
+- Pipeline steps visualization (progress, quality, time per step)
+- Video preview panel
+- Creative prompt animation
+- No SSR/SSG; pure SPA with fast HMR
+
+### 3. Backend (Node.js/Express)
+- REST API for video/job management, health, and integration with Supabase, S3, Cognito
+- BullMQ (Bull) for job queueing
+- Bull Board for queue/job monitoring at `/admin/queues`
+- Rate limiting, CORS, Helmet for security
+- Logging with Winston
+
+### 4. Worker Service
+- Picks up jobs from Bull queue
+- Runs the full video generation pipeline:
+  - Script generation (OpenAI, Anthropic, Google, XAI)
+  - Voice generation (VoCloner via Playwright automation)
+  - Audio mixing (voice + BGM) with FFmpeg
+  - Subtitle generation (AssemblyAI)
+  - Script-to-image generation (OpenAI, Google, Anthropic, XAI)
+  - Image-to-video assembly (FFmpeg)
+  - Audio/video muxing
+  - Subtitle burning (ASS/FFmpeg)
+- OutputManager utility for organized run directories
+
+### 5. Job Queue (Bull + Redis)
+- Redis-backed Bull queue for all video jobs
+- Jobs enqueued by backend, processed by worker
+- Basic error handling, retries, and logging
+- Bull Board for real-time queue/job monitoring
+
+### 6. S3 Integration
+- Signed upload/download URLs for video assets
+- Worker uploads results to S3
+
+### 7. Supabase Integration
+- Used as the main Postgres DB
+- RLS for per-user data isolation
+- Tables: users, videos, jobs (with relationships)
+- Supabase JS client for both backend and frontend
+
+### 8. Auth (AWS Cognito)
+- User registration, login, JWT issuance/validation
+- Amplify not used; direct Cognito integration
+
+### 9. Docker & DevOps
+- Dockerfiles for backend, worker, frontend
+- Docker Compose for local dev
+- GitHub Actions for CI (lint, build, type-check)
+- .env, .env.staging, .env.production for config
+
+### 10. Output Management
+- All pipeline outputs organized by run in `/results`
+- Each run has subfolders for script, audio, images, video, subtitles
+
+### 11. Miscellaneous
+- TypeScript everywhere
+- Modern, modular codebase
+- Clear separation of concerns (frontend, backend, worker)
+- CHANGELOG, CONTRIBUTING, and detailed README
+
+---
+
+### Notable Differences from Original Plan
+
+- **Frontend is Vite+React, not Next.js** (no SSR/SSG, no API routes in frontend)
+- Auth is handled directly with Cognito, not via Amplify
+- Pipeline steps and job progress are visualized in the frontend, but currently use dummy data (real progress tracking is planned)
+- BullMQ is used for job queueing, but advanced features (priorities, dependencies, dead-letter queues) are not fully implemented yet
+- Worker pipeline is fully sequential, with each step as a modular function
+- OutputManager ensures reproducible, organized results for every run
+
+---
+
+### Next Steps / TODOs
+
+- Implement real progress tracking and job status updates in frontend
+- Add job prioritization, concurrency control, and dead-letter queue handling in Bull
+- Integrate real-time updates (WebSockets or Supabase subscriptions)
+- Add more robust error handling and monitoring
+- Expand test coverage (unit/E2E)
+- Productionize Dockerfiles and deployment scripts
+
+---
+
 1. **Monorepo & Tooling Setup**
    - pnpm workspaces, Turborepo, linting, formatting, pre-commit hooks, shared types package.
 
