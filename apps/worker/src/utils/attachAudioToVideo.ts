@@ -1,7 +1,5 @@
 import ffmpegPath from 'ffmpeg-static';
 import ffmpeg from 'fluent-ffmpeg';
-import fs from 'fs';
-import path from 'path';
 
 export async function attachAudioToVideo({
   videoPath,
@@ -18,13 +16,15 @@ export async function attachAudioToVideo({
       .input(videoPath)
       .input(audioPath)
       .outputOptions([
-        '-c:v libx264', // re-encode video for subtitle burning
-        '-map 0:v:0', // use video from first input
-        '-map 1:a:0', // use audio from second input
-        '-shortest'   // end output when shortest stream ends
+        '-c:v libx264',
+        '-c:a aac',
+        '-map 0:v:0',
+        '-map 1:a:0',
+        '-vf tpad=stop_mode=clone:stop_duration=1000', // freeze last frame if audio is longer
+        '-shortest'
       ])
       .output(outputPath)
-      .on('end', resolve)
+      .on('end', (_stdout: any, _stderr: any) => resolve())
       .on('error', reject)
       .run();
   });
