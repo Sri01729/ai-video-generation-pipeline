@@ -13,7 +13,7 @@ import { addVideoJob, videoQueue } from './queues/videoQueue';
 
 dotenv.config();
 
-const app: Express = express();
+const app = express();
 
 app.use('/results', express.static('results'));
 
