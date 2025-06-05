@@ -31,6 +31,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
 } from "@/components/ui/sidebar"
 
 const data = {
@@ -44,11 +47,6 @@ const data = {
       title: "Dashboard",
       url: "#",
       icon: IconDashboard,
-    },
-    {
-      title: "Lifecycle",
-      url: "#",
-      icon: IconListDetails,
     },
     {
       title: "Analytics",
@@ -66,52 +64,45 @@ const data = {
       icon: IconUsers,
     },
   ],
-  navClouds: [
+  videoPipeline: [
     {
-      title: "Capture",
+      title: "New Video",
+      url: "#",
       icon: IconCamera,
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
     },
     {
-      title: "Proposal",
-      icon: IconFileDescription,
+      title: "Recent Jobs",
       url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
+      icon: IconListDetails,
     },
     {
-      title: "Prompts",
+      title: "Pipeline Status",
+      url: "#",
+      icon: IconInnerShadowTop,
+    },
+  ],
+  assets: [
+    {
+      title: "Upload Asset",
+      url: "#",
       icon: IconFileAi,
+    },
+    {
+      title: "Data Library",
       url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
+      icon: IconDatabase,
+    },
+  ],
+  logs: [
+    {
+      title: "Job Queue",
+      url: "#",
+      icon: IconReport,
+    },
+    {
+      title: "Logs",
+      url: "#",
+      icon: IconFileDescription,
     },
   ],
   navSecondary: [
@@ -132,11 +123,6 @@ const data = {
     },
   ],
   documents: [
-    {
-      name: "Data Library",
-      url: "#",
-      icon: IconDatabase,
-    },
     {
       name: "Reports",
       url: "#",
@@ -170,6 +156,54 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
+        {/* Video Pipeline Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Video Pipeline</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {data.videoPipeline.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton tooltip={item.title}>
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        {/* Assets Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Assets</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {data.assets.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton tooltip={item.title}>
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        {/* Logs & Monitoring Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Logs & Monitoring</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {data.logs.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton tooltip={item.title}>
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
         <NavDocuments items={data.documents} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
