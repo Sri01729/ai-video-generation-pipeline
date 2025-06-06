@@ -127,6 +127,7 @@ export default function VideoPlayer({ src, poster, className, defaultDimension =
     VIDEO_DIMENSIONS.find((d) => d.id === defaultDimension) || VIDEO_DIMENSIONS[1],
   )
   const [isMetadataLoaded, setIsMetadataLoaded] = useState(false)
+  const [isClient, setIsClient] = useState(false)
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Check if current dimension is mobile (vertical)
@@ -134,14 +135,13 @@ export default function VideoPlayer({ src, poster, className, defaultDimension =
 
   // Calculate responsive dimensions
   const getResponsiveDimensions = () => {
-    const maxWidth =
-      typeof window !== "undefined"
-        ? Math.min(window.innerWidth - 32, selectedDimension.width)
-        : selectedDimension.width
-    const maxHeight =
-      typeof window !== "undefined"
-        ? Math.min(window.innerHeight - 200, selectedDimension.height)
-        : selectedDimension.height
+    // Use original dimensions on server or before client hydration
+    if (!isClient) {
+      return { width: selectedDimension.width, height: selectedDimension.height }
+    }
+
+    const maxWidth = Math.min(window.innerWidth - 32, selectedDimension.width)
+    const maxHeight = Math.min(window.innerHeight - 200, selectedDimension.height)
 
     // Calculate dimensions maintaining aspect ratio
     let width = selectedDimension.width
@@ -174,8 +174,15 @@ export default function VideoPlayer({ src, poster, className, defaultDimension =
     {} as Record<string, VideoDimension[]>,
   )
 
+  // Set client flag after hydration
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
   // Update responsive dimensions on window resize or dimension change
   useEffect(() => {
+    if (!isClient) return
+
     const updateDimensions = () => {
       setResponsiveDimensions(getResponsiveDimensions())
     }
@@ -183,7 +190,7 @@ export default function VideoPlayer({ src, poster, className, defaultDimension =
     updateDimensions()
     window.addEventListener("resize", updateDimensions)
     return () => window.removeEventListener("resize", updateDimensions)
-  }, [selectedDimension])
+  }, [selectedDimension, isClient])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -472,7 +479,7 @@ export default function VideoPlayer({ src, poster, className, defaultDimension =
               onClick={togglePlay}
               className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 flex items-center justify-center rounded-full bg-foreground bg-opacity-20 backdrop-blur-sm transition-transform hover:scale-110"
             >
-              <Play className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-black fill-foreground" />
+              <Play className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-background fill-background" />
             </button>
           </div>
         )}
