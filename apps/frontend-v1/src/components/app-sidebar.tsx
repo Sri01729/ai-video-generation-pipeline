@@ -17,7 +17,14 @@ import {
   IconSearch,
   IconSettings,
   IconUsers,
+  IconPuzzle,
 } from "@tabler/icons-react"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 
 import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"
@@ -147,8 +154,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <a href="#">
-                <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">Acme Inc.</span>
+                {/* <img src="/maaya_logo_transparent.svg" alt="Maaya Logo" style={{ height: 24, width: 'auto', marginRight: 8, display: 'inline-block', verticalAlign: 'middle' }} /> */}
+                <span className="text-base font-semibold align-middle">Maaya</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -202,6 +209,52 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        {/* Plugins Dropdown Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Plugins</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton tooltip="Plugins">
+                  <IconPuzzle />
+                  <span>Plugins</span>
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-64">
+                <DropdownMenuItem>
+                  <div>
+                    <div className="font-medium">AI Script Author</div>
+                    <div className="text-xs text-muted-foreground">Craft compelling video scripts with AI</div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <div>
+                    <div className="font-medium">Script-to-Voice Synthesizer</div>
+                    <div className="text-xs text-muted-foreground">Transform scripts into voiceovers</div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <div>
+                    <div className="font-medium">Script-to-Image Renderer</div>
+                    <div className="text-xs text-muted-foreground">Visualize scripts as stunning images</div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <div>
+                    <div className="font-medium">Image Sequence Video Builder</div>
+                    <div className="text-xs text-muted-foreground">Assemble images into dynamic videos</div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <div>
+                    <div className="font-medium">Audio-to-Subtitle Transcriber</div>
+                    <div className="text-xs text-muted-foreground">Generate accurate subtitles from audio</div>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarGroupContent>
         </SidebarGroup>
         <NavDocuments items={data.documents} />
