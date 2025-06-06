@@ -319,7 +319,7 @@ function buildSystemPrompt(persona: string, style: string, maxLength: number, pr
     case 'narrator':
       return NARRATOR_PROMPT(persona, style, maxLength);
     default:
-      return WHAT_IF_REALISTIC_PROMPT(persona, style, maxLength);
+      return DIALOGUE_PROMPT(maxLength);
   }
 }
 
