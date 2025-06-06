@@ -20,6 +20,12 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as React from "react"
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 interface UseAutoResizeTextareaProps {
     minHeight: number;
@@ -134,11 +140,11 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 )
 Textarea.displayName = "Textarea"
 
-export function AnimatedAIChat() {
+export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload: { prompt: string, model: string, maxLength: number, provider?: string }) => Promise<void>, loading?: boolean }) {
+    console.log('AnimatedAIChat loading:', loading, 'onGenerate:', typeof onGenerate);
     const [value, setValue] = useState("");
     const [attachments, setAttachments] = useState<string[]>([]);
-    const [isTyping, setIsTyping] = useState(false);
-    const [isPending, startTransition] = useTransition();
+    const [model, setModel] = useState("gpt-4.1-nano");
     const [activeSuggestion, setActiveSuggestion] = useState<number>(-1);
     const [showCommandPalette, setShowCommandPalette] = useState(false);
     const [recentCommand, setRecentCommand] = useState<string | null>(null);
@@ -253,21 +259,17 @@ export function AnimatedAIChat() {
         } else if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             if (value.trim()) {
-                handleSendMessage();
+                handleGenerate();
             }
         }
     };
 
-    const handleSendMessage = () => {
-        if (value.trim()) {
-            startTransition(() => {
-                setIsTyping(true);
-                setTimeout(() => {
-                    setIsTyping(false);
-                    setValue("");
-                    adjustHeight(true);
-                }, 3000);
-            });
+    const handleGenerate = async () => {
+        console.log('handleGenerate called', { value, loading });
+        if (value.trim() && !loading) {
+            const provider = model.startsWith("gpt-") ? "openai" : undefined;
+            console.log('Calling onGenerate with', { prompt: value.trim(), model, maxLength: 1000, provider });
+            await onGenerate?.({ prompt: value.trim(), model, maxLength: 1000, provider });
         }
     };
 
@@ -375,7 +377,7 @@ export function AnimatedAIChat() {
                             )}
                         </AnimatePresence>
 
-                        <div className="p-4">
+                        <div className="p-4 flex flex-col gap-2">
                             <Textarea
                                 ref={textareaRef}
                                 value={value}
@@ -386,7 +388,7 @@ export function AnimatedAIChat() {
                                 onKeyDown={handleKeyDown}
                                 onFocus={() => setInputFocused(true)}
                                 onBlur={() => setInputFocused(false)}
-                                placeholder="Ask zap a question..."
+                                placeholder="Type your prompt here..."
                                 containerClassName="w-full"
                                 className={cn(
                                     "w-full px-4 py-3",
@@ -403,6 +405,42 @@ export function AnimatedAIChat() {
                                 }}
                                 showRing={false}
                             />
+                        </div>
+
+                        <div className="p-4 border-t border-border flex items-center justify-between gap-4">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <button className="px-3 py-1 rounded-md border bg-background text-sm font-medium flex items-center gap-2 hover:bg-muted transition-colors">
+                                        {model}
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-44">
+                                    <DropdownMenuItem onClick={() => setModel("gpt-4.1-nano")}>gpt-4.1-nano</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setModel("gpt-3.5-turbo")}>gpt-3.5-turbo</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setModel("gpt-4")}>gpt-4</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <motion.button
+                                type="button"
+                                onClick={handleGenerate}
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.98 }}
+                                disabled={loading || !value.trim()}
+                                className={cn(
+                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                                    "flex items-center gap-2",
+                                    value.trim()
+                                        ? "bg-foreground text-background shadow-lg shadow-border/50"
+                                        : "bg-muted text-muted-foreground"
+                                )}
+                            >
+                                {loading ? (
+                                    <LoaderIcon className="w-4 h-4 animate-[spin_2s_linear_infinite]" />
+                                ) : (
+                                    <SendIcon className="w-4 h-4" />
+                                )}
+                                <span>Generate</span>
+                            </motion.button>
                         </div>
 
                         <AnimatePresence>
@@ -433,64 +471,6 @@ export function AnimatedAIChat() {
                                 </motion.div>
                             )}
                         </AnimatePresence>
-
-                        <div className="p-4 border-t border-border flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                                <motion.button
-                                    type="button"
-                                    onClick={handleAttachFile}
-                                    whileTap={{ scale: 0.94 }}
-                                    className="p-2 text-muted-foreground hover:text-foreground rounded-lg transition-colors relative group"
-                                >
-                                    <Paperclip className="w-4 h-4" />
-                                    <motion.span
-                                        className="absolute inset-0 bg-gradient-to-r from-muted/50 to-muted/50"
-                                        layoutId="button-highlight"
-                                    />
-                                </motion.button>
-                                <motion.button
-                                    type="button"
-                                    data-command-button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowCommandPalette(prev => !prev);
-                                    }}
-                                    whileTap={{ scale: 0.94 }}
-                                    className={cn(
-                                        "p-2 text-muted-foreground hover:text-foreground rounded-lg transition-colors relative group",
-                                        showCommandPalette && "bg-muted text-foreground"
-                                    )}
-                                >
-                                    <Command className="w-4 h-4" />
-                                    <motion.span
-                                        className="absolute inset-0 bg-gradient-to-r from-muted/50 to-muted/50"
-                                        layoutId="button-highlight"
-                                    />
-                                </motion.button>
-                            </div>
-
-                            <motion.button
-                                type="button"
-                                onClick={handleSendMessage}
-                                whileHover={{ scale: 1.01 }}
-                                whileTap={{ scale: 0.98 }}
-                                disabled={isTyping || !value.trim()}
-                                className={cn(
-                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                                    "flex items-center gap-2",
-                                    value.trim()
-                                        ? "bg-foreground text-background shadow-lg shadow-border/50"
-                                        : "bg-muted text-muted-foreground"
-                                )}
-                            >
-                                {isTyping ? (
-                                    <LoaderIcon className="w-4 h-4 animate-[spin_2s_linear_infinite]" />
-                                ) : (
-                                    <SendIcon className="w-4 h-4" />
-                                )}
-                                <span>Send</span>
-                            </motion.button>
-                        </div>
                     </motion.div>
 
                     <div className="flex flex-wrap items-center justify-center gap-2">
@@ -522,27 +502,6 @@ export function AnimatedAIChat() {
                     </div>
                 </motion.div>
             </div>
-
-            <AnimatePresence>
-                {isTyping && (
-                    <motion.div
-                        className="fixed bottom-8 mx-auto transform -translate-x-1/2 backdrop-blur-2xl bg-background/80 rounded-full px-4 py-2 shadow-lg border border-border"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-7 rounded-full bg-muted flex items-center justify-center text-center">
-                                <span className="text-xs font-medium text-foreground mb-0.5">zap</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <span>Thinking</span>
-                                <TypingDots />
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
             {inputFocused && (
                 <motion.div

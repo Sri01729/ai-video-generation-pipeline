@@ -57,7 +57,7 @@ app.post('/api/echo', (req: Request, res: Response) => {
 app.post('/api/generate', async (req: Request, res: Response) => {
   console.log('POST /api/generate body:', req.body);
   const { prompt, persona, style, maxLength, model, provider, promptStyle } = req.body;
-  if (!prompt || !persona || !style || !maxLength || !model || !provider || !promptStyle) {
+  if (!prompt ||  !maxLength || !model || !provider ) {
     return res.status(400).json({ success: false, error: 'Missing required fields' });
   }
   try {
