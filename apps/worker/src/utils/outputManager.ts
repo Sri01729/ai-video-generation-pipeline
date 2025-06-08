@@ -6,8 +6,8 @@ function sanitize(str: string) {
   return str.replace(/[^a-zA-Z0-9-_]/g, '_');
 }
 
-function extractKeyword(prompt: string): string {
-  // Use first 2 unique, meaningful words (skip common stopwords)
+function extractKeyword(prompt: string | undefined | null): string {
+  if (!prompt || typeof prompt !== 'string') return 'run';
   const stopwords = new Set(['the', 'a', 'an', 'and', 'or', 'to', 'of', 'in', 'on', 'for', 'with', 'is', 'are', 'as', 'by', 'at', 'from']);
   const words = prompt.split(/\s+/).map(w => w.toLowerCase()).filter(w => w && !stopwords.has(w));
   const unique = Array.from(new Set(words));

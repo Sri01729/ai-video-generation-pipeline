@@ -31,13 +31,21 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               const res = await fetch(`${apiUrl}/api/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, model, maxLength, ...(provider ? { provider } : {}) }),
+                body: JSON.stringify({
+                  prompt,
+                  model,
+                  maxLength,
+                  ...(provider ? { provider } : {}),
+                  persona: '',
+                  style: '',
+                  promptStyle: ''
+                }),
               });
               console.log('Sidebar fetch response', res);
               if (!res.ok) throw new Error('Request failed');
               const blob = await res.blob();
               const url = URL.createObjectURL(blob);
-              router.push(`/home/videoplayer?src=${encodeURIComponent(url)}`);
+              router.push(`/home/videoplayer?src=${encodeURIComponent(url)}&prompt=${encodeURIComponent(prompt)}`);
             } catch (err) {
               // Optionally handle error
               console.error('Sidebar onGenerate error', err);

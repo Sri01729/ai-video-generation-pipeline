@@ -4,7 +4,7 @@ dotenv.config();
 
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
-const queue = new Bull('test-queue', { redis: redisUrl });
+const queue = new Bull('video-generation', { redis: redisUrl });
 
 queue.process(async (job) => {
   console.log('Worker received job:', job.id, job.data);

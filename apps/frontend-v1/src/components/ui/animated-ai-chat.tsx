@@ -26,6 +26,8 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import VideoProgress from "@/components/video-progress";
+import { steps } from "@/components/video-progress";
 
 interface UseAutoResizeTextareaProps {
     minHeight: number;
@@ -140,7 +142,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 )
 Textarea.displayName = "Textarea"
 
-export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload: { prompt: string, model: string, maxLength: number, provider?: string }) => Promise<void>, loading?: boolean }) {
+export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload: { prompt: string, model: string, maxLength: number, provider?: string }) => Promise<{ jobId: string } | void>, loading?: boolean }) {
     console.log('AnimatedAIChat loading:', loading, 'onGenerate:', typeof onGenerate);
     const [value, setValue] = useState("");
     const [attachments, setAttachments] = useState<string[]>([]);
@@ -155,6 +157,7 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
     });
     const [inputFocused, setInputFocused] = useState(false);
     const commandPaletteRef = useRef<HTMLDivElement>(null);
+    const [jobId, setJobId] = useState<string | null>(null);
 
     const commandSuggestions: CommandSuggestion[] = [
         {
@@ -269,7 +272,8 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
         if (value.trim() && !loading) {
             const provider = model.startsWith("gpt-") ? "openai" : undefined;
             console.log('Calling onGenerate with', { prompt: value.trim(), model, maxLength: 1000, provider });
-            await onGenerate?.({ prompt: value.trim(), model, maxLength: 1000, provider });
+            const result = await onGenerate?.({ prompt: value.trim(), model, maxLength: 1000, provider });
+            if (result && result.jobId) setJobId(result.jobId);
         }
     };
 
@@ -518,6 +522,8 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
                     }}
                 />
             )}
+
+            {jobId && <VideoProgressWithWS jobId={jobId} />}
         </div>
     );
 }
@@ -605,4 +611,32 @@ if (typeof document !== 'undefined') {
     style.innerHTML = rippleKeyframes;
     document.head.appendChild(style);
 }
+
+function VideoProgressWithWS({ jobId }: { jobId: string }) {
+    const [currentStep, setCurrentStep] = useState("script");
+    const [active, setActive] = useState(true);
+
+    useEffect(() => {
+        if (!jobId) return;
+        const ws = new window.WebSocket("ws://localhost:4050");
+        ws.onopen = () => ws.send(JSON.stringify({ type: "subscribe", jobId }));
+        ws.onmessage = (event) => {
+            const { step } = JSON.parse(event.data);
+            if (step === "done") {
+                setActive(false);
+                ws.close();
+            } else {
+                setCurrentStep(step);
+            }
+        };
+        ws.onerror = () => setActive(false);
+        ws.onclose = () => setActive(false);
+        return () => ws.close();
+    }, [jobId]);
+
+    if (!active) return null;
+    const stepIndex = steps.findIndex(s => s.id === currentStep);
+    return <VideoProgress isActive currentStep={stepIndex >= 0 ? stepIndex : 0} />;
+}
+
 export default AnimatedAIChat;

@@ -12,6 +12,8 @@ export const videoQueue = new Bull('video-generation', {
   }
 });
 
+console.log('Bull queue created with redis:', redisUrl);
+
 export async function addVideoJob(data: any) {
   return videoQueue.add(data, {
     removeOnComplete: false,

@@ -91,8 +91,12 @@ const { router: bullBoardRouter } = createBullBoard([
 app.use('/admin/queues', bullBoardRouter);
 
 app.post('/api/video/job', async (req: Request, res: Response) => {
+  const { prompt, model, maxLength, provider } = req.body;
+  if (!prompt || !model || !maxLength || !provider) {
+    return res.status(400).json({ success: false, error: 'Missing required fields: prompt, model, maxLength, provider' });
+  }
   try {
-    const job = await addVideoJob(req.body);
+    const job = await addVideoJob({ prompt, model, maxLength, provider });
     res.json({ success: true, jobId: job.id });
   } catch (err) {
     res.status(500).json({ success: false, error: err instanceof Error ? err.message : String(err) });

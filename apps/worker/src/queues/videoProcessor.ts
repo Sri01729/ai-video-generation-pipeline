@@ -1,6 +1,7 @@
 import Bull from 'bull';
 import dotenv from 'dotenv';
 import { runFullPipeline } from '../utils/runFullPipeline';
+import { emitProgress } from '../../../../packages/shared/wsServer';
 
 dotenv.config();
 
@@ -13,7 +14,30 @@ videoQueue.process(async (job) => {
   try {
     const resultPath = await runFullPipeline(
       job.data,
-      (percent, _step) => job.progress(percent)
+      (percent, step) => {
+        job.progress(percent);
+        // Map step to progress step string for frontend
+        const stepMap = {
+          'Script Generation': 'script',
+          'Script Generated': 'script',
+          'Voice Generation': 'voiceover',
+          'Voice Generated': 'voiceover',
+          'Audio Mixing': 'voiceover',
+          'Audio Mixed': 'voiceover',
+          'Subtitle Generation': 'processing',
+          'Subtitles Generated': 'processing',
+          'Image Generation': 'images',
+          'Images Generated': 'images',
+          'Video Assembly': 'assembly',
+          'Images Stitched to Video': 'assembly',
+          'Attaching Audio to Video': 'assembly',
+          'Audio Attached': 'assembly',
+          'Burning Subtitles': 'processing',
+          'Done': 'done',
+        };
+        const mappedStep = (stepMap as Record<string, string>)[step] || 'processing';
+        emitProgress(String(job.id), mappedStep);
+      }
     );
     console.log('Worker finished video job:', job.id, resultPath);
     return { output: resultPath };

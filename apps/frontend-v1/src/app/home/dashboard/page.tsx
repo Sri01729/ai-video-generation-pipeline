@@ -32,7 +32,7 @@ export default function Page() {
           if (!res.ok) throw new Error('Request failed');
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
-          router.push(`/home/videoplayer?src=${encodeURIComponent(url)}`);
+          router.push(`/home/videoplayer?src=${encodeURIComponent(url)}&prompt=${encodeURIComponent(prompt)}`);
         } catch (err) {
           console.error('onGenerate error', err);
         } finally {
