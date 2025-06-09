@@ -28,7 +28,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
             setLoading(true);
             try {
               console.log('Sidebar onGenerate called', { prompt, model, maxLength, provider });
-              const res = await fetch(`${apiUrl}/api/generate`, {
+              const res = await fetch(`${apiUrl}/api/video/job`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -41,11 +41,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                   promptStyle: ''
                 }),
               });
-              console.log('Sidebar fetch response', res);
-              if (!res.ok) throw new Error('Request failed');
-              const blob = await res.blob();
-              const url = URL.createObjectURL(blob);
-              router.push(`/home/videoplayer?src=${encodeURIComponent(url)}&prompt=${encodeURIComponent(prompt)}`);
+              // No need to handle response here, AnimatedAIChat will handle jobId and videoUrl
             } catch (err) {
               // Optionally handle error
               console.error('Sidebar onGenerate error', err);

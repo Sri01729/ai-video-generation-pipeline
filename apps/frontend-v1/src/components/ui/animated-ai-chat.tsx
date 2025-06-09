@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import VideoProgress from "@/components/video-progress";
 import { steps } from "@/components/video-progress";
+import VideoPlayer from "@/components/video-player";
 
 interface UseAutoResizeTextareaProps {
     minHeight: number;
@@ -158,6 +159,7 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
     const [inputFocused, setInputFocused] = useState(false);
     const commandPaletteRef = useRef<HTMLDivElement>(null);
     const [jobId, setJobId] = useState<string | null>(null);
+    const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
     const commandSuggestions: CommandSuggestion[] = [
         {
@@ -268,12 +270,18 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
     };
 
     const handleGenerate = async () => {
-        console.log('handleGenerate called', { value, loading });
         if (value.trim() && !loading) {
             const provider = model.startsWith("gpt-") ? "openai" : undefined;
-            console.log('Calling onGenerate with', { prompt: value.trim(), model, maxLength: 1000, provider });
-            const result = await onGenerate?.({ prompt: value.trim(), model, maxLength: 1000, provider });
-            if (result && result.jobId) setJobId(result.jobId);
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/video/job`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt: value.trim(), model, maxLength: 1000, provider }),
+            });
+            const data = await res.json();
+            if (data && data.jobId) {
+                setJobId(data.jobId);
+                setVideoUrl(null);
+            }
         }
     };
 
@@ -523,7 +531,8 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
                 />
             )}
 
-            {jobId && <VideoProgressWithWS jobId={jobId} />}
+            {jobId && !videoUrl && <VideoProgressWithWS jobId={jobId} onComplete={setVideoUrl} />}
+            {videoUrl && <VideoPlayer src={videoUrl} />}
         </div>
     );
 }
@@ -612,7 +621,7 @@ if (typeof document !== 'undefined') {
     document.head.appendChild(style);
 }
 
-function VideoProgressWithWS({ jobId }: { jobId: string }) {
+function VideoProgressWithWS({ jobId, onComplete }: { jobId: string, onComplete: (url: string) => void }) {
     const [currentStep, setCurrentStep] = useState("script");
     const [active, setActive] = useState(true);
 
@@ -620,9 +629,15 @@ function VideoProgressWithWS({ jobId }: { jobId: string }) {
         if (!jobId) return;
         const ws = new window.WebSocket("ws://localhost:4050");
         ws.onopen = () => ws.send(JSON.stringify({ type: "subscribe", jobId }));
-        ws.onmessage = (event) => {
+        ws.onmessage = async (event) => {
             const { step } = JSON.parse(event.data);
             if (step === "done") {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/video/result/${jobId}`);
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    onComplete(url);
+                }
                 setActive(false);
                 ws.close();
             } else {
@@ -632,7 +647,7 @@ function VideoProgressWithWS({ jobId }: { jobId: string }) {
         ws.onerror = () => setActive(false);
         ws.onclose = () => setActive(false);
         return () => ws.close();
-    }, [jobId]);
+    }, [jobId, onComplete]);
 
     if (!active) return null;
     const stepIndex = steps.findIndex(s => s.id === currentStep);

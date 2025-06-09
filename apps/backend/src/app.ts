@@ -1,3 +1,4 @@
+// apps/backend/src/app.ts
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -26,19 +27,13 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// TODO: Move CORS origins to config file for better environment separation
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
   credentials: true,
 }));
 
-// FIXME: Remove wildcard CORS before production deployment
-
 app.use(helmet());
 app.use(express.json());
-
-// TODO: import and use routes
-// app.use('/api', apiRoutes);
 
 // Request logging
 app.use((req, _res, next) => {
@@ -53,50 +48,52 @@ app.post('/api/echo', (req: Request, res: Response) => {
   res.json({ received: req.body });
 });
 
-// Video generation endpoint (full pipeline)
+// Video generation endpoint (full pipeline) - MODIFIED to use queue
 app.post('/api/generate', async (req: Request, res: Response) => {
   console.log('POST /api/generate body:', req.body);
   const { prompt, persona, style, maxLength, model, provider, promptStyle } = req.body;
-  if (!prompt ||  !maxLength || !model || !provider ) {
+
+  if (!prompt || !maxLength || !model || !provider) {
     return res.status(400).json({ success: false, error: 'Missing required fields' });
   }
+
   try {
-    const output = await runFullPipeline({ prompt, persona, style, maxLength, model, provider, promptStyle });
-    console.log('runFullPipeline output:', output);
-    res.setHeader('Content-Type', 'video/mp4');
-    res.setHeader('Content-Disposition', 'attachment; filename=output.mp4');
-    res.sendFile(output, { root: process.cwd() }, (err) => {
-      if (err) {
-        console.error('sendFile error:', err);
-        if (!res.headersSent) {
-          const msg = err instanceof Error ? err.message : String(err);
-          res.status(500).json({ success: false, error: msg || 'Send file failed' });
-        }
-      }
+    // Instead of running the pipeline directly, add it to the queue
+    const job = await addVideoJob({
+      prompt,
+      persona,
+      style,
+      maxLength,
+      model,
+      provider,
+      promptStyle
     });
+
+    // Return job ID so frontend can poll for status
+    res.json({
+      success: true,
+      jobId: job.id,
+      message: 'Video generation job queued successfully'
+    });
+
   } catch (err) {
     console.error('Error in /api/generate:', err);
-    if (!res.headersSent) {
-      const msg = err instanceof Error ? err.message : String(err);
-      res.status(500).json({ success: false, error: msg || 'Pipeline failed' });
-    }
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, error: msg || 'Failed to queue job' });
   }
 });
 
-// Bull queue for UI
+// Bull queue UI - this should now show jobs!
 const { router: bullBoardRouter } = createBullBoard([
   new BullAdapter(videoQueue)
 ]);
 
 app.use('/admin/queues', bullBoardRouter);
 
+// Video job endpoints
 app.post('/api/video/job', async (req: Request, res: Response) => {
-  const { prompt, model, maxLength, provider } = req.body;
-  if (!prompt || !model || !maxLength || !provider) {
-    return res.status(400).json({ success: false, error: 'Missing required fields: prompt, model, maxLength, provider' });
-  }
   try {
-    const job = await addVideoJob({ prompt, model, maxLength, provider });
+    const job = await addVideoJob(req.body);
     res.json({ success: true, jobId: job.id });
   } catch (err) {
     res.status(500).json({ success: false, error: err instanceof Error ? err.message : String(err) });
@@ -118,6 +115,43 @@ app.get('/api/video/job/:id', async (req: Request, res: Response) => {
       state,
       progress,
       result
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Add endpoint to get completed job result (video file)
+app.get('/api/video/result/:id', async (req: Request, res: Response) => {
+  try {
+    const job = await videoQueue.getJob(req.params.id);
+    if (!job) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+
+    const state = await job.getState();
+    if (state !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        error: `Job is not completed. Current state: ${state}`
+      });
+    }
+
+    const result = job.returnvalue;
+    if (!result || !result.output) {
+      return res.status(404).json({ success: false, error: 'No output file found' });
+    }
+
+    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Content-Disposition', 'attachment; filename=output.mp4');
+    res.sendFile(result.output, { root: process.cwd() }, (err) => {
+      if (err) {
+        console.error('sendFile error:', err);
+        if (!res.headersSent) {
+          const msg = err instanceof Error ? err.message : String(err);
+          res.status(500).json({ success: false, error: msg || 'Send file failed' });
+        }
+      }
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err instanceof Error ? err.message : String(err) });
