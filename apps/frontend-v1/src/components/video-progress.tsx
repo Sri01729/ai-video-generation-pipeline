@@ -5,6 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { FileText, Mic, Image, Video, Settings, CheckCircle, Play } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation"
 
 interface Step {
   id: string
@@ -58,6 +59,8 @@ interface VideoProgressProps {
   className?: string
   currentStep?: number
   progress?: number
+  videoUrl?: string
+  onWatchVideo?: () => void
 }
 
 export default function VideoProgress({
@@ -65,8 +68,10 @@ export default function VideoProgress({
   onComplete,
   className,
   currentStep: externalCurrentStep,
-  progress: externalProgress
-}: VideoProgressProps) {
+  progress: externalProgress,
+  videoUrl,
+  onWatchVideo
+}: VideoProgressProps & { videoUrl?: string, onWatchVideo?: () => void }) {
   const [currentStep, setCurrentStep] = useState(0)
   const [isCompleted, setIsCompleted] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -172,9 +177,11 @@ export default function VideoProgress({
                         r="30"
                         fill="none"
                         stroke="currentColor"
-                        strokeWidth="1"
-                        strokeDasharray={`${(activeProgress / 100) * 188.5} 188.5`}
-                        className="text-foreground transition-all duration-300"
+                        strokeWidth="3"
+                        strokeDasharray="188.5"
+                        strokeDashoffset={188.5 - (activeProgress / 100) * 188.5}
+                        className="text-foreground transition-all duration-500"
+                        style={{ transition: 'stroke-dashoffset 0.5s cubic-bezier(0.4,0,0.2,1)' }}
                       />
                     </svg>
                   )}
@@ -237,10 +244,14 @@ export default function VideoProgress({
             >
               Generate Another
             </button>
-            <button className="inline-flex items-center gap-3 px-10 py-4 text-base font-medium text-background bg-foreground hover:bg-foreground/80 transition-all duration-200 shadow-sm hover:shadow-md">
-              <Play className="w-5 h-5" />
-              Watch Video
-            </button>
+            {videoUrl && (
+              <button className="inline-flex items-center gap-3 px-10 py-4 text-base font-medium text-background bg-foreground hover:bg-foreground/80 transition-all duration-200 shadow-sm hover:shadow-md"
+                onClick={onWatchVideo}
+              >
+                <Play className="w-5 h-5" />
+                Watch Video
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -277,6 +288,8 @@ export function VideoProgressWithWS({
   const [active, setActive] = useState(true)
   const [isCompleted, setIsCompleted] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const router = useRouter();
 
   // Map backend progress messages to step indices and progress
   const mapProgressToStep = (progressPercent: number) => {
@@ -374,7 +387,8 @@ export function VideoProgressWithWS({
       if (res.ok) {
         const blob = await res.blob()
         const url = URL.createObjectURL(blob)
-        onComplete(url)
+        setVideoUrl(url)
+        // Do not auto-route, let user click Watch Video
       } else {
         throw new Error(`Failed to fetch result: ${res.status}`)
       }
@@ -539,6 +553,8 @@ export function VideoProgressWithWS({
       isActive={active}
       currentStep={currentStep}
       progress={progress}
+      videoUrl={videoUrl || undefined}
+      onWatchVideo={videoUrl ? () => router.push(`/home/videoplayer?src=${encodeURIComponent(videoUrl)}`) : undefined}
       onComplete={() => {}}
     />
   )

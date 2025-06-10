@@ -11,6 +11,8 @@ import Bull from 'bull';
 import { createBullBoard } from 'bull-board';
 import { BullAdapter } from 'bull-board/bullAdapter';
 import { addVideoJob, videoQueue } from './queues/videoQueue';
+import path from 'path';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -139,12 +141,24 @@ app.get('/api/video/result/:id', async (req: Request, res: Response) => {
 
     const result = job.returnvalue;
     if (!result || !result.output) {
+      console.error('[Result API] No output file in job.returnvalue:', result);
       return res.status(404).json({ success: false, error: 'No output file found' });
+    }
+
+    // Resolve the file path
+    const outputPath = path.isAbsolute(result.output)
+      ? result.output
+      : path.resolve(process.cwd(), result.output);
+
+    // Check if the file exists
+    if (!fs.existsSync(outputPath)) {
+      console.error('[Result API] Output file does not exist:', outputPath);
+      return res.status(404).json({ success: false, error: 'Output file does not exist' });
     }
 
     res.setHeader('Content-Type', 'video/mp4');
     res.setHeader('Content-Disposition', 'attachment; filename=output.mp4');
-    res.sendFile(result.output, { root: process.cwd() }, (err) => {
+    res.sendFile(outputPath, (err) => {
       if (err) {
         console.error('sendFile error:', err);
         if (!res.headersSent) {
@@ -154,6 +168,7 @@ app.get('/api/video/result/:id', async (req: Request, res: Response) => {
       }
     });
   } catch (err) {
+    console.error('[Result API] Handler error:', err);
     res.status(500).json({ success: false, error: err instanceof Error ? err.message : String(err) });
   }
 });

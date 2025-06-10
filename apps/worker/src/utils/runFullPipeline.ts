@@ -56,7 +56,6 @@ export async function runFullPipeline({
   // 1. Script Generation
   onProgress?.(10, 'Script Generation');
   const om = new OutputManager();
-  const outputDir = 'results';
   const runDir = om.setupRunDirs(prompt);
   fs.writeFileSync('run_dir.txt', runDir, 'utf8');
 
