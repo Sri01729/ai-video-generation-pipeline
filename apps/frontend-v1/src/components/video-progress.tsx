@@ -6,6 +6,7 @@ import { useState, useEffect } from "react"
 import { FileText, Mic, Image, Video, Settings, CheckCircle, Play } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
+import styles from './video-progress.module.css'
 
 interface Step {
   id: string
@@ -122,7 +123,7 @@ export default function VideoProgress({
   }
 
   return (
-    <div className={cn("w-full max-w-4xl mx-auto p-6", className)}>
+    <div className={cn("w-full max-w-4xl mx-auto p-6 min-h-screen flex flex-col justify-center", className)}>
       {/* Header */}
       <div className="text-center mb-12">
         <h2 className="text-3xl font-light text-foreground mb-3">
@@ -136,25 +137,26 @@ export default function VideoProgress({
       </div>
 
       {/* Progress Steps */}
-      <div className="relative">
+      <div className="relative w-full max-w-2xl mx-auto px-2 sm:px-4">
         {/* Progress Line */}
-        <div className="absolute top-8 left-0 w-full h-px bg-muted">
+        <div className="absolute top-8 left-0 w-full h-px bg-muted z-0">
           <div
-            className="h-full bg-foreground transition-all duration-700 ease-out"
+            className="h-full bg-foreground transition-all duration-700 ease-out rounded"
             style={{
               width: `${((activeCurrentStep + (activeIsCompleted ? 1 : activeProgress / 100)) / steps.length) * 100}%`,
+              maxWidth: '100%'
             }}
           />
         </div>
 
         {/* Steps */}
-        <div className="relative flex justify-between">
+        <div className="relative flex flex-wrap justify-between gap-y-12 gap-x-8 z-10">
           {steps.map((step, index) => {
             const status = getStepStatus(index)
             const Icon = step.icon
 
             return (
-              <div key={step.id} className="flex flex-col items-center">
+              <div key={step.id} className="flex flex-col items-center flex-1 min-w-[80px] max-w-[120px] mx-auto">
                 {/* Step Circle */}
                 <div
                   className={cn(
@@ -188,7 +190,7 @@ export default function VideoProgress({
                 </div>
 
                 {/* Step Info */}
-                <div className="mt-6 text-center max-w-32">
+                <div className="mt-6 text-center max-w-32 break-words">
                   <h3
                     className={cn("font-medium text-sm transition-colors duration-300", {
                       "text-foreground": status === "completed" || status === "active",
@@ -215,9 +217,11 @@ export default function VideoProgress({
       {/* Current Step Details */}
       {!activeIsCompleted && isActive && (
         <div className="mt-12 text-center">
-          <div className="inline-flex items-center gap-3 px-6 py-3 border border-muted rounded-full bg-background">
-            <div className="w-2 h-2 bg-foreground rounded-full animate-pulse" />
-            <span className="text-sm font-light text-foreground">{steps[activeCurrentStep]?.description}</span>
+          <div className="relative inline-flex items-center gap-3 px-6 py-3 rounded-full bg-background animate-border-gradient">
+            {/* Animated Gradient Border */}
+            <span className={cn("absolute inset-0 rounded-full p-[2px] z-0 pointer-events-none", styles['border-gradient-animated'])} aria-hidden="true" />
+            <div className="w-2 h-2 bg-foreground rounded-full animate-pulse z-10" />
+            <span className="text-sm font-light text-foreground z-10">{steps[activeCurrentStep]?.description}</span>
           </div>
         </div>
       )}

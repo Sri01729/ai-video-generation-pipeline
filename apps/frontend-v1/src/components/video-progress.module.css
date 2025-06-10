@@ -1,0 +1,22 @@
+@keyframes borderGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.border-gradient-animated {
+  background: linear-gradient(270deg, #6366f1, #06b6d4, #f472b6, #6366f1);
+  background-size: 600% 600%;
+  animation: borderGradient 3s linear infinite;
+  border-radius: 9999px;
+  padding: 2px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.dark .border-gradient-animated {
+  background: linear-gradient(270deg, #fff, #6366f1, #06b6d4, #fff);
+}
