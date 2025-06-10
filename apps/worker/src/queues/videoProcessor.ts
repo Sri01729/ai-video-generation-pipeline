@@ -2,6 +2,7 @@
 import Bull from 'bull';
 import dotenv from 'dotenv';
 import { runFullPipeline } from '../utils/runFullPipeline';
+import { emitProgress } from '../../../../packages/shared/wsServer';
 
 dotenv.config();
 
@@ -24,7 +25,8 @@ videoQueue.process(async (job) => {
     // Update progress callback
     const updateProgress = (percent: number, step: string) => {
       job.progress(percent);
-      console.log(`Job ${job.id} progress: ${percent}% - ${step}`);
+      emitProgress(job.id.toString(), `${percent}%`);
+      console.log(`[videoProcessor] Job ${job.id} progress: ${percent}% - Step: ${step}`);
     };
 
     const resultPath = await runFullPipeline(
@@ -32,6 +34,7 @@ videoQueue.process(async (job) => {
       updateProgress
     );
 
+    emitProgress(job.id.toString(), 'done');
     console.log('Worker finished video job:', job.id, resultPath);
     return { output: resultPath };
 

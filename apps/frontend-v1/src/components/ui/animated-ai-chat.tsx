@@ -26,9 +26,8 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import VideoProgress from "@/components/video-progress";
-import { steps } from "@/components/video-progress";
-import VideoPlayer from "@/components/video-player";
+
+import { useRouter } from "next/navigation";
 
 interface UseAutoResizeTextareaProps {
     minHeight: number;
@@ -143,8 +142,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 )
 Textarea.displayName = "Textarea"
 
-export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload: { prompt: string, model: string, maxLength: number, provider?: string }) => Promise<{ jobId: string } | void>, loading?: boolean }) {
-    console.log('AnimatedAIChat loading:', loading, 'onGenerate:', typeof onGenerate);
+export function AnimatedAIChat() {
     const [value, setValue] = useState("");
     const [attachments, setAttachments] = useState<string[]>([]);
     const [model, setModel] = useState("gpt-4.1-nano");
@@ -160,6 +158,10 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
     const commandPaletteRef = useRef<HTMLDivElement>(null);
     const [jobId, setJobId] = useState<string | null>(null);
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
+    const [lastPrompt, setLastPrompt] = useState<string>("");
+    const router = useRouter();
+    const [loading, setLoading] = useState(false);
+    const [isFading, setIsFading] = useState(false);
 
     const commandSuggestions: CommandSuggestion[] = [
         {
@@ -270,17 +272,30 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
     };
 
     const handleGenerate = async () => {
-        if (value.trim() && !loading) {
-            const provider = model.startsWith("gpt-") ? "openai" : undefined;
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/video/job`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ prompt: value.trim(), model, maxLength: 1000, provider }),
-            });
-            const data = await res.json();
-            if (data && data.jobId) {
-                setJobId(data.jobId);
-                setVideoUrl(null);
+        if (value.trim()) {
+            setLoading(true);
+            try {
+                const provider = model.startsWith("gpt-") ? "openai" : undefined;
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/video/job`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt: value.trim(), model, maxLength: 1000, provider }),
+                });
+                if (!res.ok) throw new Error('Request failed');
+                const data = await res.json();
+                if (data && data.jobId) {
+                    setIsFading(true);
+                    setTimeout(() => {
+                        router.push(`/home/pipeline-status?jobId=${encodeURIComponent(data.jobId)}&prompt=${encodeURIComponent(value.trim())}`);
+                    }, 600); // 600ms fade duration
+                } else {
+                    throw new Error('No jobId returned');
+                }
+            } catch (err) {
+                alert("Failed to start video generation. Please try again.");
+                console.error('handleGenerate error', err);
+            } finally {
+                setLoading(false);
             }
         }
     };
@@ -304,7 +319,10 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
     };
 
     return (
-        <div className="min-h-screen flex flex-col w-full items-center justify-center bg-transparent text-foreground p-6 relative overflow-hidden">
+        <div className={cn(
+            "min-h-screen flex flex-col w-full items-center justify-center bg-transparent text-foreground p-6 relative overflow-hidden",
+            isFading && "opacity-0 transition-opacity duration-700"
+        )}>
         <div className="absolute inset-0 w-full h-full overflow-hidden">
                 <div className="absolute top-0 left-1/4 w-96 h-96 bg-white/10 rounded-full mix-blend-normal filter blur-[128px] animate-pulse" />
                 <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-white/10 rounded-full mix-blend-normal filter blur-[128px] animate-pulse delay-700" />
@@ -437,7 +455,7 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
                                 onClick={handleGenerate}
                                 whileHover={{ scale: 1.01 }}
                                 whileTap={{ scale: 0.98 }}
-                                disabled={loading || !value.trim()}
+                                disabled={!value.trim()}
                                 className={cn(
                                     "px-4 py-2 rounded-lg text-sm font-medium transition-all",
                                     "flex items-center gap-2",
@@ -446,11 +464,7 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
                                         : "bg-muted text-muted-foreground"
                                 )}
                             >
-                                {loading ? (
-                                    <LoaderIcon className="w-4 h-4 animate-[spin_2s_linear_infinite]" />
-                                ) : (
-                                    <SendIcon className="w-4 h-4" />
-                                )}
+                                <SendIcon className="w-4 h-4" />
                                 <span>Generate</span>
                             </motion.button>
                         </div>
@@ -530,9 +544,6 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
                     }}
                 />
             )}
-
-            {jobId && !videoUrl && <VideoProgressWithWS jobId={jobId} onComplete={setVideoUrl} />}
-            {videoUrl && <VideoPlayer src={videoUrl} />}
         </div>
     );
 }
@@ -621,37 +632,6 @@ if (typeof document !== 'undefined') {
     document.head.appendChild(style);
 }
 
-function VideoProgressWithWS({ jobId, onComplete }: { jobId: string, onComplete: (url: string) => void }) {
-    const [currentStep, setCurrentStep] = useState("script");
-    const [active, setActive] = useState(true);
 
-    useEffect(() => {
-        if (!jobId) return;
-        const ws = new window.WebSocket("ws://localhost:4050");
-        ws.onopen = () => ws.send(JSON.stringify({ type: "subscribe", jobId }));
-        ws.onmessage = async (event) => {
-            const { step } = JSON.parse(event.data);
-            if (step === "done") {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/video/result/${jobId}`);
-                if (res.ok) {
-                    const blob = await res.blob();
-                    const url = URL.createObjectURL(blob);
-                    onComplete(url);
-                }
-                setActive(false);
-                ws.close();
-            } else {
-                setCurrentStep(step);
-            }
-        };
-        ws.onerror = () => setActive(false);
-        ws.onclose = () => setActive(false);
-        return () => ws.close();
-    }, [jobId, onComplete]);
-
-    if (!active) return null;
-    const stepIndex = steps.findIndex(s => s.id === currentStep);
-    return <VideoProgress isActive currentStep={stepIndex >= 0 ? stepIndex : 0} />;
-}
 
 export default AnimatedAIChat;

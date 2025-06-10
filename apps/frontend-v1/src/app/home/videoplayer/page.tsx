@@ -1,7 +1,6 @@
 "use client"
 import VideoPlayer from "@/components/video-player"
 import { useSearchParams } from "next/navigation"
-import { Badge } from "@/components/ui/badge"
 import {
   Accordion,
   AccordionContent,
