@@ -162,31 +162,44 @@ export function AnimatedAIChat() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [isFading, setIsFading] = useState(false);
+    const [improving, setImproving] = useState(false);
 
     const commandSuggestions: CommandSuggestion[] = [
         {
-            icon: <ImageIcon className="w-4 h-4" />,
-            label: "Clone UI",
-            description: "Generate a UI from a screenshot",
-            prefix: "/clone"
+            icon: <Sparkles className="w-4 h-4" />,
+            label: "Enhance Prompt",
+            description: "Let AI rewrite your prompt for best results",
+            prefix: "/improve"
         },
         {
-            icon: <Figma className="w-4 h-4" />,
-            label: "Import Figma",
-            description: "Import a design from Figma",
-            prefix: "/figma"
+            icon: <SendIcon className="w-4 h-4" />,
+            label: "Quick Video",
+            description: "Generate a short video from your prompt",
+            prefix: "/quick"
         },
         {
             icon: <MonitorIcon className="w-4 h-4" />,
-            label: "Create Page",
-            description: "Generate a new web page",
-            prefix: "/page"
+            label: "Storyboard",
+            description: "Get a storyboard preview before rendering",
+            prefix: "/storyboard"
         },
         {
-            icon: <Sparkles className="w-4 h-4" />,
-            label: "Improve",
-            description: "Improve existing UI design",
-            prefix: "/improve"
+            icon: <FileUp className="w-4 h-4" />,
+            label: "Upload Script",
+            description: "Upload your own script for video generation",
+            prefix: "/upload"
+        },
+        {
+            icon: <ImageIcon className="w-4 h-4" />,
+            label: "Custom Thumbnail",
+            description: "Generate a thumbnail for your video",
+            prefix: "/thumbnail"
+        },
+        {
+            icon: <Figma className="w-4 h-4" />,
+            label: "Change Style",
+            description: "Switch video style (cartoon, cinematic, etc)",
+            prefix: "/style"
         },
     ];
 
@@ -318,9 +331,31 @@ export function AnimatedAIChat() {
         setTimeout(() => setRecentCommand(null), 2000);
     };
 
+    const handleImprove = async () => {
+        if (!value.trim()) return;
+        setImproving(true);
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/improve-prompt`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: value })
+            });
+            const data = await res.json();
+            if (data.improved) setValue(data.improved);
+        } catch (err) {
+            // Optionally handle error
+        } finally {
+            setImproving(false);
+        }
+    };
+
+    useEffect(() => {
+        adjustHeight();
+    }, [value, adjustHeight]);
+
     return (
         <div className={cn(
-            "min-h-screen flex flex-col w-full items-center justify-center bg-transparent text-foreground p-6 relative overflow-hidden",
+            "h-screen flex flex-col w-full items-center justify-center bg-transparent text-foreground p-6 py-8 relative overflow-hidden",
             isFading && "opacity-0 transition-opacity duration-700"
         )}>
         <div className="absolute inset-0 w-full h-full overflow-hidden">
@@ -330,7 +365,7 @@ export function AnimatedAIChat() {
             </div>
             <div className="w-full max-w-2xl mx-auto relative">
                 <motion.div
-                    className="relative z-10 space-y-12"
+                    className="relative z-10 space-y-6"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut" }}
@@ -408,33 +443,52 @@ export function AnimatedAIChat() {
                         </AnimatePresence>
 
                         <div className="p-4 flex flex-col gap-2">
-                            <Textarea
-                                ref={textareaRef}
-                                value={value}
-                                onChange={(e) => {
-                                    setValue(e.target.value);
-                                    adjustHeight();
-                                }}
-                                onKeyDown={handleKeyDown}
-                                onFocus={() => setInputFocused(true)}
-                                onBlur={() => setInputFocused(false)}
-                                placeholder="Type your prompt here..."
-                                containerClassName="w-full"
-                                className={cn(
-                                    "w-full px-4 py-3",
-                                    "resize-none",
-                                    "bg-transparent",
-                                    "border-none",
-                                    "text-foreground text-sm",
-                                    "focus:outline-none",
-                                    "placeholder:text-muted-foreground",
-                                    "min-h-[60px]"
-                                )}
-                                style={{
-                                    overflow: "hidden",
-                                }}
-                                showRing={false}
-                            />
+                            <div className="relative w-full">
+                                <Textarea
+                                    ref={textareaRef}
+                                    value={value}
+                                    onChange={(e) => {
+                                        setValue(e.target.value);
+                                        adjustHeight();
+                                    }}
+                                    onKeyDown={handleKeyDown}
+                                    onFocus={() => setInputFocused(true)}
+                                    onBlur={() => setInputFocused(false)}
+                                    placeholder="Type your prompt here..."
+                                    containerClassName="w-full"
+                                    className={cn(
+                                        "w-full px-4 py-3",
+                                        "resize-none",
+                                        "bg-transparent",
+                                        "border-none",
+                                        "text-foreground text-sm",
+                                        "focus:outline-none",
+                                        "placeholder:text-muted-foreground",
+                                        "min-h-[60px]",
+                                        "max-h-[200px]",
+                                        "overflow-auto"
+                                    )}
+                                    showRing={false}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleImprove}
+                                    disabled={improving || !value.trim()}
+                                    className={cn(
+                                        "absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full",
+                                        "bg-white/80 dark:bg-black/60 border border-border shadow-md",
+                                        "hover:bg-white dark:hover:bg-black hover:shadow-lg",
+                                        "transition disabled:opacity-50"
+                                    )}
+                                    aria-label="Improve prompt"
+                                >
+                                    {improving ? (
+                                        <LoaderIcon className="w-5 h-5 animate-spin text-muted-foreground" />
+                                    ) : (
+                                        <Sparkles className="w-5 h-5 text-muted-foreground hover:text-foreground transition" />
+                                    )}
+                                </button>
+                            </div>
                         </div>
 
                         <div className="p-4 border-t border-border flex items-center justify-between gap-4">

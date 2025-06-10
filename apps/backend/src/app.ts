@@ -6,13 +6,12 @@ import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import type { Request, Response, Express } from 'express';
 import logger from './utils/logger';
-import { runFullPipeline } from '../../worker/src/utils/runFullPipeline';
-import Bull from 'bull';
 import { createBullBoard } from 'bull-board';
 import { BullAdapter } from 'bull-board/bullAdapter';
 import { addVideoJob, videoQueue } from './queues/videoQueue';
 import path from 'path';
 import fs from 'fs';
+import { enhancePrompt } from '../../worker/src/utils/enhancePrompt';
 
 dotenv.config();
 
@@ -170,6 +169,19 @@ app.get('/api/video/result/:id', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('[Result API] Handler error:', err);
     res.status(500).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Prompt Enhancement Endpoint (centralized in backend)
+app.post('/api/improve-prompt', async (req: Request, res: Response) => {
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ error: 'No prompt provided' });
+  try {
+    const improved = await enhancePrompt(prompt);
+    res.json({ improved });
+  } catch (err) {
+    logger.error('Error in /api/improve-prompt:', err);
+    res.status(500).json({ error: 'Failed to improve prompt' });
   }
 });
 

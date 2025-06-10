@@ -12,15 +12,19 @@ function PipelineStatusContent() {
 
   if (!jobId) {
     return (
-      <div className="w-full max-w-4xl mx-auto p-6 text-center">
-        <h2 className="text-3xl font-light text-red-500 mb-3">Error</h2>
-        <p className="text-muted-foreground font-light">No job ID provided</p>
-        <button
-          onClick={() => router.push("/home")}
-          className="mt-4 px-6 py-2 bg-foreground text-background rounded hover:bg-foreground/80"
-        >
-          Go Back
-        </button>
+      <div className="w-full min-h-screen flex flex-col justify-center items-center bg-background">
+        <div className="max-w-xl text-center p-8 rounded-lg border border-muted bg-background/80 shadow-sm">
+          <h2 className="text-2xl font-light text-foreground mb-4">No video generation has been started</h2>
+          <p className="text-muted-foreground font-light mb-8">
+            Go to the dashboard to generate a video.
+          </p>
+          <button
+            onClick={() => router.push("/home/dashboard")}
+            className="px-8 py-3 text-base font-medium text-background bg-foreground rounded-full hover:bg-foreground/80 transition-colors duration-200"
+          >
+            Go to Dashboard
+          </button>
+        </div>
       </div>
     );
   }
