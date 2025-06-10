@@ -17,6 +17,7 @@ import {
     LoaderIcon,
     Sparkles,
     Command,
+    VideoIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as React from "react"
@@ -28,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { useRouter } from "next/navigation";
+import { SparklesText } from "@/components/ui/sparkles-text";
 
 interface UseAutoResizeTextareaProps {
     minHeight: number;
@@ -377,8 +379,15 @@ export function AnimatedAIChat() {
                             transition={{ delay: 0.2, duration: 0.5 }}
                             className="inline-block"
                         >
-                            <h1 className="text-3xl font-medium tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground pb-1">
-                                How can I help today?
+                            <h1 className="text-3xl font-medium tracking-tight pb-1">
+                                <span className="bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground">
+                                    Welcome to
+                                </span>{" "}
+                                <SparklesText
+                                    text="Maaya"
+                                    className="inline text-3xl font-medium tracking-tight"
+                                    colors={{ first: "#000", second: "#fff" }}
+                                />
                             </h1>
                             <motion.div
                                 className="h-px bg-gradient-to-r from-transparent via-border to-transparent"
@@ -393,7 +402,7 @@ export function AnimatedAIChat() {
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.3 }}
                         >
-                            Type a command or ask a question
+                            Instantly generate AI-powered videos from your ideas, scripts, or commands.
                         </motion.p>
                     </div>
 
@@ -454,7 +463,7 @@ export function AnimatedAIChat() {
                                     onKeyDown={handleKeyDown}
                                     onFocus={() => setInputFocused(true)}
                                     onBlur={() => setInputFocused(false)}
-                                    placeholder="Type your prompt here..."
+                                    placeholder="Describe your video idea, paste a script, or try a command…"
                                     containerClassName="w-full"
                                     className={cn(
                                         "w-full px-4 py-3",
@@ -518,7 +527,7 @@ export function AnimatedAIChat() {
                                         : "bg-muted text-muted-foreground"
                                 )}
                             >
-                                <SendIcon className="w-4 h-4" />
+                                <VideoIcon className="w-4 h-4" />
                                 <span>Generate</span>
                             </motion.button>
                         </div>
