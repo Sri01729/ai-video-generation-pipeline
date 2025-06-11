@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { outputConfig } from '../../../../output.config';
+import { outputConfig } from '../../../../../../output.config';
 
 function sanitize(str: string) {
   return str.replace(/[^a-zA-Z0-9-_]/g, '_');

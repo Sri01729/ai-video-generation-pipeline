@@ -6,7 +6,7 @@ import { google } from '@ai-sdk/google';
 import { cohere } from '@ai-sdk/cohere';
 import fs from 'fs';
 import path from 'path';
-import { OutputManager } from './outputManager';
+import { OutputManager } from '../output/outputManager';
 import { VertexAI } from '@google-cloud/vertexai';
 
 // System prompts for different styles

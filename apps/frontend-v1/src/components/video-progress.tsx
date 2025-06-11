@@ -76,6 +76,7 @@ export default function VideoProgress({
   const [currentStep, setCurrentStep] = useState(0)
   const [isCompleted, setIsCompleted] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [isFading, setIsFading] = useState(false)
 
   // Use external step and progress if provided (for WebSocket integration)
   const activeCurrentStep = externalCurrentStep !== undefined ? externalCurrentStep : currentStep
@@ -123,7 +124,11 @@ export default function VideoProgress({
   }
 
   return (
-    <div className={cn("w-full max-w-4xl mx-auto p-6 min-h-screen flex flex-col justify-center", className)}>
+    <div className={cn(
+      "w-full max-w-4xl mx-auto p-6 min-h-screen flex flex-col justify-center",
+      isFading && "opacity-0 transition-opacity duration-500",
+      className
+    )}>
       {/* Header */}
       <div className="text-center mb-12">
         <h2 className="text-3xl font-light text-foreground mb-3">
@@ -230,7 +235,7 @@ export default function VideoProgress({
       {activeIsCompleted && (
         <div className="mt-20 text-center space-y-8">
           {/* Simple completion indicator */}
-          <div className="space-y-6">
+          {/* <div className="space-y-6">
             <div className="w-20 h-20 bg-foreground rounded-full flex items-center justify-center mx-auto">
               <CheckCircle className="w-10 h-10 text-background" />
             </div>
@@ -238,19 +243,25 @@ export default function VideoProgress({
               <h3 className="text-2xl font-light text-foreground">Your Video is Ready</h3>
               <p className="text-muted-foreground font-light">Generation completed successfully</p>
             </div>
-          </div>
+          </div> */}
 
           {/* Clean action buttons */}
-          <div className="flex gap-6 justify-center items-center pt-4">
-            <button
+          <div className="flex gap-6 justify-center items-center">
+            {/* <button
               onClick={resetProgress}
               className="text-sm font-light text-muted-foreground hover:text-foreground transition-colors duration-200 underline underline-offset-4"
             >
               Generate Another
-            </button>
+            </button> */}
             {videoUrl && (
-              <button className="inline-flex items-center gap-3 px-10 py-4 text-base font-medium text-background bg-foreground hover:bg-foreground/80 transition-all duration-200 shadow-sm hover:shadow-md"
-                onClick={onWatchVideo}
+              <button
+                className="inline-flex items-center gap-3 px-8 py-3 rounded-3xl text-white bg-white/10 hover:bg-white/20 border border-white/20 shadow-lg font-semibold tracking-wide transition-all duration-200"
+                onClick={() => {
+                  setIsFading(true);
+                  setTimeout(() => {
+                    onWatchVideo?.();
+                  }, 500); // 500ms matches the fade duration
+                }}
               >
                 <Play className="w-5 h-5" />
                 Watch Video

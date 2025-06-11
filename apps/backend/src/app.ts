@@ -11,7 +11,7 @@ import { BullAdapter } from 'bull-board/bullAdapter';
 import { addVideoJob, videoQueue } from './queues/videoQueue';
 import path from 'path';
 import fs from 'fs';
-import { enhancePrompt } from '../../worker/src/utils/enhancePrompt';
+import { enhancePrompt } from '../../worker/src/utils/prompt/enhancePrompt';
 
 dotenv.config();
 

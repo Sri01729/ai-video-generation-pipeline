@@ -25,7 +25,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-
+import { SparklesText } from "@/components/ui/sparkles-text"
 import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
@@ -45,8 +45,8 @@ import {
 
 const data = {
   user: {
-    name: "shadcn",
-    email: "m@example.com",
+    name: "sai srinivas alahari",
+    email: "sai@example.com",
     avatar: "/avatars/shadcn.jpg",
   },
   navMain: [
@@ -155,7 +155,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <a href="#">
                 {/* <img src="/maaya_logo_transparent.svg" alt="Maaya Logo" style={{ height: 24, width: 'auto', marginRight: 8, display: 'inline-block', verticalAlign: 'middle' }} /> */}
-                <span className="text-base font-semibold align-middle">Maaya</span>
+                <SparklesText
+                                    text="Maaya"
+                                    className="inline text-xl font-medium tracking-tight"
+                                    colors={{ first: "#000", second: "#fff" }}
+                                />
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>

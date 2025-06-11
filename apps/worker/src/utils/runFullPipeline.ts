@@ -1,16 +1,18 @@
 import 'dotenv/config';
-import { OutputManager } from './outputManager';
-import generateVideoScript from './openaiScriptGenerator';
-import generateVoiceWithVoCloner from './generateVoiceWithVoCloner';
-import { generateDiaTts } from './diaTtsGenerator';
-import { mixAudio } from './mixAudio';
-import { transcribeAndGenerateSrt } from './generateAssFromAudio';
-import ScriptImageGenerator from './scriptToImageGenerator';
-import { attachAudioToVideo } from './attachAudioToVideo';
-import { burnSubtitles } from './burnSubtitles';
+import { OutputManager } from './pipeline/output/outputManager';
+import generateVideoScript from './pipeline/script/openaiScriptGenerator';
+// import generateVoiceWithVoCloner from './pipeline/voice/generateVoiceWithVoCloner';
+import { resembleTTS } from './pipeline/voice/resembleTTS';
+import { generateDiaTts } from './pipeline/voice/diaTtsGenerator';
+import { mixAudio } from './pipeline/audio/mixAudio';
+import { transcribeAndGenerateSrt } from './pipeline/subtitles/generateAssFromAudio';
+import ScriptImageGenerator from './pipeline/images/scriptToImageGenerator';
+import { attachAudioToVideo } from './pipeline/video/attachAudioToVideo';
+import { burnSubtitles } from './pipeline/video/burnSubtitles';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { openaiTTS } from './pipeline/voice/openaiTTS';
 
 // Config array for script-to-image prompt generation
 const IMAGE_PROMPT_CONFIGS = [
@@ -77,7 +79,8 @@ export async function runFullPipeline({
   const scriptFiles = fs.readdirSync(scriptDir).filter(f => f.endsWith('.txt'));
   const script = fs.readFileSync(path.join(scriptDir, scriptFiles[0]), 'utf8');
   const voicePath = path.join(runDir, 'audio', 'voice-Gojo.mp3');
-  await generateVoiceWithVoCloner(script, voicePath, 'Gojo');
+  // await generateVoiceWithVoCloner(script, voicePath, 'Gojo');
+  await openaiTTS({ input: script, outPath: voicePath });
   onProgress?.(35, 'Voice Generated');
 
   // // 3. Voice Generation(using dia tts)
@@ -130,7 +133,7 @@ export async function runFullPipeline({
 
   // 6. Video Assembly
   onProgress?.(80, 'Video Assembly');
-  execSync(`npx ts-node ${path.join(__dirname, 'stitchImagesToVideo.ts')}`, { stdio: 'inherit' });
+  execSync(`npx ts-node ${path.join(__dirname, './pipeline/video/stitchImagesToVideo.ts')}`, { stdio: 'inherit' });
 
   // 7. Attach Audio to Video
   onProgress?.(90, 'Attaching Audio');
