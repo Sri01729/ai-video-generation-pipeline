@@ -42,6 +42,7 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
+import Link from "next/link"
 
 const data = {
   user: {
@@ -143,6 +144,34 @@ const data = {
   ],
 }
 
+const pluginRoutes = [
+  {
+    title: "AI Script Author",
+    description: "Craft compelling video scripts with AI",
+    href: "/plugins/script-author"
+  },
+  {
+    title: "Script-to-Voice Synthesizer",
+    description: "Transform scripts into voiceovers",
+    href: "/plugins/voice-synthesizer"
+  },
+  {
+    title: "Script-to-Image Renderer",
+    description: "Visualize scripts as stunning images",
+    href: "/plugins/image-renderer"
+  },
+  {
+    title: "Image Sequence Video Builder",
+    description: "Assemble images into dynamic videos",
+    href: "/plugins/video-builder"
+  },
+  {
+    title: "Audio-to-Subtitle Transcriber",
+    description: "Generate accurate subtitles from audio",
+    href: "/plugins/subtitle-transcriber"
+  }
+];
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -227,36 +256,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-64">
-                <DropdownMenuItem>
-                  <div>
-                    <div className="font-medium">AI Script Author</div>
-                    <div className="text-xs text-muted-foreground">Craft compelling video scripts with AI</div>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <div>
-                    <div className="font-medium">Script-to-Voice Synthesizer</div>
-                    <div className="text-xs text-muted-foreground">Transform scripts into voiceovers</div>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <div>
-                    <div className="font-medium">Script-to-Image Renderer</div>
-                    <div className="text-xs text-muted-foreground">Visualize scripts as stunning images</div>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <div>
-                    <div className="font-medium">Image Sequence Video Builder</div>
-                    <div className="text-xs text-muted-foreground">Assemble images into dynamic videos</div>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <div>
-                    <div className="font-medium">Audio-to-Subtitle Transcriber</div>
-                    <div className="text-xs text-muted-foreground">Generate accurate subtitles from audio</div>
-                  </div>
-                </DropdownMenuItem>
+                {pluginRoutes.map((route) => (
+                  <DropdownMenuItem key={route.href} asChild>
+                    <Link href={route.href}>
+                      <div>
+                        <div className="font-medium">{route.title}</div>
+                        <div className="text-xs text-muted-foreground">{route.description}</div>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarGroupContent>

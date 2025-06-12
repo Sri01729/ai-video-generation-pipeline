@@ -20,3 +20,7 @@ export async function addVideoJob(data: any) {
     removeOnFail: false
   });
 }
+
+export async function getJob(jobId: string) {
+  return videoQueue.getJob(jobId);
+}

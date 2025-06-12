@@ -12,6 +12,9 @@ import { addVideoJob, videoQueue } from './queues/videoQueue';
 import path from 'path';
 import fs from 'fs';
 import { enhancePrompt } from '../../worker/src/utils/prompt/enhancePrompt';
+import scriptRouter from './routes/plugins/script';
+import voiceRouter from './routes/plugins/voice';
+import imageRouter from './routes/plugins/image';
 
 dotenv.config();
 
@@ -184,6 +187,11 @@ app.post('/api/improve-prompt', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to improve prompt' });
   }
 });
+
+// Mount plugin routes
+app.use('/api/plugins/script', scriptRouter);
+app.use('/api/plugins/voice', voiceRouter);
+app.use('/api/plugins/image', imageRouter);
 
 // Error logging (should be after all routes)
 app.use((err: Error, _req: Request, res: Response, _next: Function) => {

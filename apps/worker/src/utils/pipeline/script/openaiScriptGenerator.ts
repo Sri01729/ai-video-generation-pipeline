@@ -385,8 +385,8 @@ export default async function generateVideoScript(config: ScriptGenConfig): Prom
     return { script: fullText, filePath };
   }
 
-  const persona = config.persona || 'funny, sharp-tongued tech explainer';
-  const style = config.style || 'memes, sarcasm, relatable developer humor';
+  const persona = config.persona || 'useful assistant ';
+  const style = config.style || 'Normal style';
   const maxLength = config.maxLength || 700;
   const modelInstance = getAIProvider(provider, config.model);
   const systemPrompt = buildSystemPrompt(persona, style, maxLength, config.promptStyle);
@@ -408,21 +408,6 @@ export default async function generateVideoScript(config: ScriptGenConfig): Prom
   return { script: result.text, filePath };
 }
 
-/**
- * Enhance a user prompt for clarity, creativity, and effectiveness using OpenAI via Vercel AI SDK.
- * Returns the improved prompt as a string.
- */
-export async function enhancePrompt(prompt: string): Promise<string> {
-  if (!prompt) return prompt;
-  const systemPrompt = "You are a prompt engineer. Improve the following prompt for clarity, creativity, and effectiveness, but keep the user's intent.";
-  const { text } = await generateText({
-    model: openai('gpt-4o-mini'),
-    prompt: `${systemPrompt}\n\n${prompt}`,
-    maxTokens: 200,
-    temperature: 0.7,
-  });
-  return text?.trim() || prompt;
-}
 
 // Example usage:
 // if (require.main === module) {

@@ -3,6 +3,9 @@ import Bull from 'bull';
 import dotenv from 'dotenv';
 import { runFullPipeline } from '../utils/runFullPipeline';
 import { emitProgress } from '../../../../packages/shared/wsServer';
+import path from 'path';
+import { OutputManager } from '../utils/pipeline/output/outputManager';
+import generateVideoScript from '../utils/pipeline/script/openaiScriptGenerator';
 
 dotenv.config();
 
@@ -17,26 +20,56 @@ const videoQueue = new Bull('video-generation', {
   }
 });
 
+// Modular job processor
+async function processJob(
+  job: Bull.Job<any>,
+  updateProgress: (percent: number, step: string) => void
+) {
+  const { scriptOnly, imageOnly, voiceOnly } = job.data;
+
+  if (scriptOnly) {
+    // Script-only job
+    const om = new OutputManager();
+    const runDir = om.setupRunDirs(job.data.prompt || 'script');
+    updateProgress(10, 'Script Generation');
+    const scriptDir = path.join(runDir, 'script');
+    const result = await generateVideoScript({
+      prompt: job.data.prompt,
+      persona: job.data.persona,
+      style: job.data.style,
+      maxLength: job.data.maxLength,
+      model: job.data.model,
+      provider: job.data.provider,
+      outputDir: scriptDir,
+      promptStyle: job.data.promptStyle
+    });
+    updateProgress(100, 'Script Generation Complete');
+    return { output: result.filePath, script: result.script };
+  }
+
+  // TODO: Add imageOnly and voiceOnly processors here if needed
+
+  // Default: full pipeline
+  const resultPath = await runFullPipeline(job.data, updateProgress);
+  return { output: resultPath };
+}
+
 // Process video generation jobs
-videoQueue.process(async (job) => {
+videoQueue.process(async (job: Bull.Job<any>) => {
   console.log('Worker received video job:', job.id, job.data);
 
   try {
-    // Update progress callback
     const updateProgress = (percent: number, step: string) => {
       job.progress(percent);
       emitProgress(job.id.toString(), `${percent}%`);
       console.log(`[videoProcessor] Job ${job.id} progress: ${percent}% - Step: ${step}`);
     };
 
-    const resultPath = await runFullPipeline(
-      job.data,
-      updateProgress
-    );
+    const result = await processJob(job, updateProgress);
 
     emitProgress(job.id.toString(), 'done');
-    console.log('Worker finished video job:', job.id, resultPath);
-    return { output: resultPath };
+    console.log('Worker finished video job:', job.id, result);
+    return result;
 
   } catch (err) {
     console.error('Worker failed video job:', job.id, err);
