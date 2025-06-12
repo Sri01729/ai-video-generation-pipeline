@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ButterflyLoading } from "@/components/butterfly-loading";
+import  ButterflyLoading  from "@/components/butterfly-loading";
 
 interface VoiceChatProps {
   onGenerate: (text: string, voice: string) => Promise<void>;
@@ -23,6 +23,8 @@ export function VoiceChat({ onGenerate, isGenerating, audioUrl }: VoiceChatProps
   const [improving, setImproving] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState("sage");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const responseRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   const voices = [
     { id: "sage", name: "Sage" },
@@ -60,6 +62,15 @@ export function VoiceChat({ onGenerate, isGenerating, audioUrl }: VoiceChatProps
       setImproving(false);
     }
   };
+
+  useEffect(() => {
+    if (responseRef.current) setContainerWidth(responseRef.current.offsetWidth);
+    const handleResize = () => {
+      if (responseRef.current) setContainerWidth(responseRef.current.offsetWidth);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   return (
     <div className="container mx-auto p-6">
@@ -124,16 +135,18 @@ export function VoiceChat({ onGenerate, isGenerating, audioUrl }: VoiceChatProps
               </Button>
             </div>
           </div>
-          {isGenerating && (
-            <ButterflyLoading
-              count={5}
-              duration={8}
-              width={containerWidth || 400}
-              height={200}
-              butterflySize={20}
-              className="!border-0"
-            />
-          )}
+          <div ref={responseRef}>
+            {isGenerating && (
+              <ButterflyLoading
+                count={5}
+                duration={8}
+                width={containerWidth || 400}
+                height={200}
+                butterflySize={20}
+                className="!border-0"
+              />
+            )}
+          </div>
           {audioUrl && (
             <audio controls src={audioUrl} className="w-full mt-4" />
           )}

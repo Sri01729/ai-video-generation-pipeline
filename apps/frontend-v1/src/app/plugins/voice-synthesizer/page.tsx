@@ -8,6 +8,13 @@ export default function VoiceSynthesizerPage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
 
+  const fetchAndPlayAudio = async (jobId: string) => {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/plugins/voice/audio/${jobId}`);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    setAudioUrl(url);
+  };
+
   const handleGenerate = async (text: string, voice: string) => {
     setIsGenerating(true);
     setAudioUrl(null);
@@ -31,7 +38,7 @@ export default function VoiceSynthesizerPage() {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/video/job/${data.jobId}`);
         const result = await res.json();
         if (result.result?.audioUrl) {
-          setAudioUrl(result.result.audioUrl);
+          await fetchAndPlayAudio(data.jobId);
           setIsGenerating(false);
           clearInterval(poll);
         }

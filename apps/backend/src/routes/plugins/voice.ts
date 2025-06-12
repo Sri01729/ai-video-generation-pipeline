@@ -1,6 +1,8 @@
 import { Router } from 'express';
-import { addVideoJob } from '../../queues/videoQueue';
+import { addVideoJob, getJob } from '../../queues/videoQueue';
 import { validateRequest } from '../../middleware/validation';
+import path from 'path';
+import fs from 'fs';
 
 const router = Router();
 
@@ -27,6 +29,25 @@ router.post('/generate', validateRequest, async (req, res) => {
       success: false,
       error: err instanceof Error ? err.message : 'Failed to queue voice generation'
     });
+  }
+});
+
+router.get('/audio/:jobId', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    // Find the job and get the audio path (you may need to adjust this logic)
+    const job = await getJob(jobId);
+    if (!job || !job.returnvalue?.output) {
+      return res.status(404).json({ error: 'Audio not found' });
+    }
+    const audioPath = job.returnvalue.output;
+    if (!fs.existsSync(audioPath)) {
+      return res.status(404).json({ error: 'Audio file does not exist' });
+    }
+    res.setHeader('Content-Type', 'audio/mpeg');
+    fs.createReadStream(audioPath).pipe(res);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to stream audio' });
   }
 });
 

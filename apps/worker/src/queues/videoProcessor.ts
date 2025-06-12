@@ -6,6 +6,8 @@ import { emitProgress } from '../../../../packages/shared/wsServer';
 import path from 'path';
 import { OutputManager } from '../utils/pipeline/output/outputManager';
 import generateVideoScript from '../utils/pipeline/script/openaiScriptGenerator';
+import fs from 'fs';
+import { openaiTTS } from '../utils/pipeline/voice/openaiTTS';
 
 dotenv.config();
 
@@ -45,6 +47,22 @@ async function processJob(
     });
     updateProgress(100, 'Script Generation Complete');
     return { output: result.filePath, script: result.script };
+  }
+
+  if (voiceOnly) {
+    // Voice-only job
+    const om = new OutputManager();
+    const runDir = om.setupRunDirs('voice');
+    updateProgress(10, 'Voice Generation');
+    const audioDir = path.join(runDir, 'audio');
+    fs.mkdirSync(audioDir, { recursive: true });
+    const audioPath = path.join(audioDir, 'voice.mp3');
+    // Use your TTS function, e.g. openaiTTS or resembleTTS
+    await openaiTTS({ input: job.data.script, outPath: audioPath });
+    updateProgress(100, 'Voice Generation Complete');
+    const resultsDir = path.resolve(process.cwd(), 'results');
+    const relativePath = path.relative(resultsDir, audioPath);
+    return { output: audioPath, audioUrl: `/results/${relativePath.replace(/\\/g, '/')}` };
   }
 
   // TODO: Add imageOnly and voiceOnly processors here if needed
