@@ -199,6 +199,7 @@ export default function ButterflyLoading({
             containerWidth={width}
             containerHeight={height}
             size={butterfly.size}
+           
           />
         ))}
 

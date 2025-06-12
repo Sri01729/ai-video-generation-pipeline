@@ -8,6 +8,7 @@ import { OutputManager } from '../utils/pipeline/output/outputManager';
 import generateVideoScript from '../utils/pipeline/script/openaiScriptGenerator';
 import fs from 'fs';
 import { openaiTTS } from '../utils/pipeline/voice/openaiTTS';
+import { openaiImageGenerator }  from '../utils/pipeline/images/openaiImageGenerator';
 
 dotenv.config();
 
@@ -63,6 +64,23 @@ async function processJob(
     const resultsDir = path.resolve(process.cwd(), 'results');
     const relativePath = path.relative(resultsDir, audioPath);
     return { output: audioPath, audioUrl: `/results/${relativePath.replace(/\\/g, '/')}` };
+  }
+
+  if (imageOnly) {
+    // Image-only job
+    const om = new OutputManager();
+    const runDir = om.setupRunDirs('image');
+    updateProgress(10, 'Image Generation');
+    const imageDir = path.join(runDir, 'images');
+    fs.mkdirSync(imageDir, { recursive: true });
+    const imagePath = path.join(imageDir, 'output.png');
+    // Call your image generation function here (replace with your actual function)
+    await openaiImageGenerator({ prompt: job.data.prompt, style: job.data.style, outPath: imagePath });
+
+    // Read the image as a buffer and return as base64
+    const imageBuffer = fs.readFileSync(imagePath);
+    updateProgress(100, 'Image Generation Complete');
+    return { output: imagePath, imageBuffer: imageBuffer.toString('base64'), imageReady: true };
   }
 
   // TODO: Add imageOnly and voiceOnly processors here if needed
