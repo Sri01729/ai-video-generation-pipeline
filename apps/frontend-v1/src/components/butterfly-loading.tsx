@@ -12,15 +12,15 @@ interface ButterflyProps {
   size: number
 }
 
-const ButterflyWing = ({ isLeft = true }: { isLeft?: boolean }) => (
-  <div className={`wing ${isLeft ? "wing-left" : "wing-right"}`}>
+const ButterflyWing = ({ isLeft = true, colorClass = "text-primary dark:text-secondary" }: { isLeft?: boolean, colorClass?: string }) => (
+  <div className={`wing ${isLeft ? "wing-left" : "wing-right"} ${colorClass}`}>
     <svg
       width="100%"
       height="100%"
       viewBox="0 0 17 29"
       version="1.1"
       xmlns="http://www.w3.org/2000/svg"
-      className="text-primary dark:text-secondary"
+      className={colorClass}
       style={{
         fillRule: "evenodd",
         clipRule: "evenodd",
@@ -40,7 +40,7 @@ const ButterflyWing = ({ isLeft = true }: { isLeft?: boolean }) => (
   </div>
 )
 
-const AnimatedButterfly = ({ id, delay, duration, containerWidth, containerHeight, size }: ButterflyProps) => {
+const AnimatedButterfly = ({ id, delay, duration, containerWidth, containerHeight, size, colorClass }: ButterflyProps & { colorClass: string }) => {
   const [path, setPath] = useState<{ x: number; y: number; rotate: number }[]>([])
 
   useEffect(() => {
@@ -122,7 +122,7 @@ const AnimatedButterfly = ({ id, delay, duration, containerWidth, containerHeigh
             ease: "linear",
           }}
         >
-          <ButterflyWing isLeft={true} />
+          <ButterflyWing isLeft={true} colorClass={colorClass} />
         </motion.div>
 
         <motion.div
@@ -141,7 +141,7 @@ const AnimatedButterfly = ({ id, delay, duration, containerWidth, containerHeigh
             ease: "linear",
           }}
         >
-          <ButterflyWing isLeft={false} />
+          <ButterflyWing isLeft={false} colorClass={colorClass} />
         </motion.div>
       </div>
     </motion.div>
@@ -165,6 +165,8 @@ interface ButterflyLoadingProps {
   className?: string
   /** Background color */
   backgroundColor?: string
+  /** Color class for butterflies */
+  colorClass?: string
 }
 
 export default function ButterflyLoading({
@@ -176,7 +178,8 @@ export default function ButterflyLoading({
   text = "Loading...",
   className = "",
   backgroundColor = "from-gray-50 to-white",
-}: ButterflyLoadingProps) {
+  colorClass = "text-primary dark:text-secondary",
+}: ButterflyLoadingProps & { colorClass?: string }) {
   const butterflies = Array.from({ length: count }, (_, i) => ({
     id: i,
     delay: (i * duration) / count + Math.random() * 2,
@@ -199,7 +202,7 @@ export default function ButterflyLoading({
             containerWidth={width}
             containerHeight={height}
             size={butterfly.size}
-           
+            colorClass={colorClass}
           />
         ))}
 

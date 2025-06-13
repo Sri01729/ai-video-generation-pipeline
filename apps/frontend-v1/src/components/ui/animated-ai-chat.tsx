@@ -148,6 +148,7 @@ export function AnimatedAIChat() {
     const [value, setValue] = useState("");
     const [attachments, setAttachments] = useState<string[]>([]);
     const [model, setModel] = useState("gpt-4.1-nano");
+    const [voice, setVoice] = useState<string | undefined>(undefined);
     const [activeSuggestion, setActiveSuggestion] = useState<number>(-1);
     const [showCommandPalette, setShowCommandPalette] = useState(false);
     const [recentCommand, setRecentCommand] = useState<string | null>(null);
@@ -291,10 +292,12 @@ export function AnimatedAIChat() {
             setLoading(true);
             try {
                 const provider = model.startsWith("gpt-") ? "openai" : undefined;
+                const body: any = { prompt: value.trim(), model, maxLength: 1000, provider };
+                if (voice) body.voice = voice;
                 const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/video/job`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ prompt: value.trim(), model, maxLength: 1000, provider }),
+                    body: JSON.stringify(body),
                 });
                 if (!res.ok) throw new Error('Request failed');
                 const data = await res.json();
@@ -501,18 +504,35 @@ export function AnimatedAIChat() {
                         </div>
 
                         <div className="p-4 border-t border-border flex items-center justify-between gap-4">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <button className="px-3 py-1 rounded-md border bg-background text-sm font-medium flex items-center gap-2 hover:bg-muted transition-colors">
-                                        {model}
-                                    </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-44">
-                                    <DropdownMenuItem onClick={() => setModel("gpt-4.1-nano")}>gpt-4.1-nano</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setModel("gpt-3.5-turbo")}>gpt-3.5-turbo</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setModel("gpt-4")}>gpt-4</DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                            <div className="flex items-center gap-2">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <button className="px-3 py-1 rounded-md border bg-background text-sm font-medium flex items-center gap-2 hover:bg-muted transition-colors">
+                                            {model}
+                                        </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-44">
+                                        <DropdownMenuItem onClick={() => setModel("gpt-4.1-nano")}>gpt-4.1-nano</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setModel("gpt-3.5-turbo")}>gpt-3.5-turbo</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setModel("gpt-4")}>gpt-4</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <button className={cn(
+                                            "px-3 py-1 rounded-md border bg-background text-sm font-medium flex items-center gap-2 hover:bg-muted transition-colors",
+                                            !voice && "text-muted-foreground"
+                                        )}>
+                                            {voice ? voice : "Select voice model"}
+                                        </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-44">
+                                        {["alloy","ash","ballad","coral","echo","fable","nova","onyx","sage","shimmer"].map(v => (
+                                            <DropdownMenuItem key={v} onClick={() => setVoice(v)}>{v}</DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
                             <motion.button
                                 type="button"
                                 onClick={handleGenerate}

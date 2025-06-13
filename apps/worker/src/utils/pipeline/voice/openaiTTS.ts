@@ -17,15 +17,17 @@ Pronunciation: Clearly articulate artistic terminology (e.g., "brushstrokes," "l
 Personality Affect: Friendly and approachable with a hint of sophistication; speak confidently and reassuringly, guiding users through each painting step patiently and warmly.`,
 
   outPath = 'output.wav',
+  voice
 }: {
   input: string;
   instructions?: string;
   outPath?: string;
+  voice?: string;
 }): Promise<string> {
   const result = await generateSpeech({
     model: openai.speech('tts-1'),
     text: input,
-    voice: 'sage',
+    voice: voice,
     instructions,
     providerOptions: { openai: {} },
   });

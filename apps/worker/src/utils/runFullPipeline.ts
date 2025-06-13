@@ -13,6 +13,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { openaiTTS } from './pipeline/voice/openaiTTS';
+import { openaiTTSWithVoiceInstructions } from './pipeline/voice/openaiTTSWithVoiceInstructions';
 
 // Config array for script-to-image prompt generation
 const IMAGE_PROMPT_CONFIGS = [
@@ -45,7 +46,8 @@ export async function runFullPipeline({
   maxLength,
   model,
   provider,
-  promptStyle
+  promptStyle,
+  voice = 'nova',
 }: {
   prompt: string;
   persona: string;
@@ -54,6 +56,7 @@ export async function runFullPipeline({
   model: string;
   provider: string;
   promptStyle: 'dev-meme' | 'documentary' | 'dialogue' | 'narrator' | 'what-if';
+  voice?: string;
 }, onProgress?: (percent: number, step: string) => void): Promise<string> {
   // 1. Script Generation
   onProgress?.(10, 'Script Generation');
@@ -80,7 +83,8 @@ export async function runFullPipeline({
   const script = fs.readFileSync(path.join(scriptDir, scriptFiles[0]), 'utf8');
   const voicePath = path.join(runDir, 'audio', 'voice-Gojo.mp3');
   // await generateVoiceWithVoCloner(script, voicePath, 'Gojo');
-  await openaiTTS({ input: script, outPath: voicePath });
+  // await openaiTTS({ input: script, outPath: voicePath });
+  await openaiTTSWithVoiceInstructions({ prompt: script, outPath: voicePath, voice });
   onProgress?.(35, 'Voice Generated');
 
   // // 3. Voice Generation(using dia tts)

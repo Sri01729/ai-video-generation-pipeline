@@ -259,12 +259,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 {pluginRoutes.map((route) => (
                   <DropdownMenuItem key={route.href} asChild>
                     <Link href={route.href}>
-                      <div>
+                  <div>
                         <div className="font-medium">{route.title}</div>
                         <div className="text-xs text-muted-foreground">{route.description}</div>
-                      </div>
+                  </div>
                     </Link>
-                  </DropdownMenuItem>
+                </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
