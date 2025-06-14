@@ -1,1 +1,1 @@
-results/test_output/explain_how_Jun3_4-38am
+/Users/srinualahari/Documents/Projects/AI-Video-generation/ai-video-generation-pipeline/apps/worker/results/generate_video_Jun13_2-11am

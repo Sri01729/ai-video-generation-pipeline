@@ -1,16 +1,19 @@
 import 'dotenv/config';
-import { OutputManager } from './outputManager';
-import generateVideoScript from './openaiScriptGenerator';
-import generateVoiceWithVoCloner from './generateVoiceWithVoCloner';
-import { generateDiaTts } from './diaTtsGenerator';
-import { mixAudio } from './mixAudio';
-import { transcribeAndGenerateSrt } from './generateAssFromAudio';
-import ScriptImageGenerator from './scriptToImageGenerator';
-import { attachAudioToVideo } from './attachAudioToVideo';
-import { burnSubtitles } from './burnSubtitles';
+import { OutputManager } from './pipeline/output/outputManager';
+import generateVideoScript from './pipeline/script/openaiScriptGenerator';
+// import generateVoiceWithVoCloner from './pipeline/voice/generateVoiceWithVoCloner';
+import { resembleTTS } from './pipeline/voice/resembleTTS';
+import { generateDiaTts } from './pipeline/voice/diaTtsGenerator';
+import { mixAudio } from './pipeline/audio/mixAudio';
+import { transcribeAndGenerateSrt } from './pipeline/subtitles/generateAssFromAudio';
+import ScriptImageGenerator from './pipeline/images/scriptToImageGenerator';
+import { attachAudioToVideo } from './pipeline/video/attachAudioToVideo';
+import { burnSubtitles } from './pipeline/video/burnSubtitles';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { openaiTTS } from './pipeline/voice/openaiTTS';
+import { openaiTTSWithVoiceInstructions } from './pipeline/voice/openaiTTSWithVoiceInstructions';
 
 // Config array for script-to-image prompt generation
 const IMAGE_PROMPT_CONFIGS = [
@@ -43,7 +46,8 @@ export async function runFullPipeline({
   maxLength,
   model,
   provider,
-  promptStyle
+  promptStyle,
+  voice = 'nova',
 }: {
   prompt: string;
   persona: string;
@@ -52,11 +56,11 @@ export async function runFullPipeline({
   model: string;
   provider: string;
   promptStyle: 'dev-meme' | 'documentary' | 'dialogue' | 'narrator' | 'what-if';
+  voice?: string;
 }, onProgress?: (percent: number, step: string) => void): Promise<string> {
   // 1. Script Generation
-  onProgress?.(5, 'Script Generation');
+  onProgress?.(10, 'Script Generation');
   const om = new OutputManager();
-  const outputDir = 'results';
   const runDir = om.setupRunDirs(prompt);
   fs.writeFileSync('run_dir.txt', runDir, 'utf8');
 
@@ -72,16 +76,15 @@ export async function runFullPipeline({
     outputDir: scriptDir,
     promptStyle
   });
-  onProgress?.(15, 'Script Generated');
-
-  // Now read the script file
-  const scriptFiles = fs.readdirSync(scriptDir).filter(f => f.endsWith('.txt'));
-  const script = fs.readFileSync(path.join(scriptDir, scriptFiles[0]), 'utf8');
 
   // 2. Voice Generation
-  onProgress?.(25, 'Voice Generation');
+  onProgress?.(30, 'Voiceover Generation');
+  const scriptFiles = fs.readdirSync(scriptDir).filter(f => f.endsWith('.txt'));
+  const script = fs.readFileSync(path.join(scriptDir, scriptFiles[0]), 'utf8');
   const voicePath = path.join(runDir, 'audio', 'voice-Gojo.mp3');
-  await generateVoiceWithVoCloner(script, voicePath, 'Gojo');
+  // await generateVoiceWithVoCloner(script, voicePath, 'Gojo');
+  // await openaiTTS({ input: script, outPath: voicePath });
+  await openaiTTSWithVoiceInstructions({ prompt: script, outPath: voicePath, voice });
   onProgress?.(35, 'Voice Generated');
 
   // // 3. Voice Generation(using dia tts)
@@ -113,16 +116,14 @@ export async function runFullPipeline({
     outputPath: mixedPath,
     musicVolumeDb: -15,
   });
-  onProgress?.(55, 'Audio Mixed');
 
   // 4. Subtitle Generation
-  onProgress?.(60, 'Subtitle Generation');
+  onProgress?.(55, 'Subtitle Generation');
   const srtPath = path.join(runDir, 'subtitles', 'final-mixed.ass');
   await transcribeAndGenerateSrt(mixedPath, srtPath);
-  onProgress?.(70, 'Subtitles Generated');
 
   // 5. Script-to-Image Generation
-  onProgress?.(75, 'Image Generation');
+  onProgress?.(65, 'Image Generation');
   const imageOutDir = path.join(runDir, 'images');
   const { provider: imgProvider, model: imgModel, apiKey } = IMAGE_PROMPT_CONFIGS[0];
   const generator = new ScriptImageGenerator(apiKey, imageOutDir);
@@ -133,15 +134,13 @@ export async function runFullPipeline({
     imgProvider as 'openai' | 'google' | 'anthropic' | 'cohere',
     imgModel
   );
-  onProgress?.(85, 'Images Generated');
 
-  // 6. Stitch Images to Video (no audio)
-  onProgress?.(90, 'Video Assembly');
-  execSync(`npx ts-node ${path.join(__dirname, 'stitchImagesToVideo.ts')}`, { stdio: 'inherit' });
-  onProgress?.(92, 'Images Stitched to Video');
+  // 6. Video Assembly
+  onProgress?.(80, 'Video Assembly');
+  execSync(`npx ts-node ${path.join(__dirname, './pipeline/video/stitchImagesToVideo.ts')}`, { stdio: 'inherit' });
 
   // 7. Attach Audio to Video
-  onProgress?.(95, 'Attaching Audio to Video');
+  onProgress?.(90, 'Attaching Audio');
   const videoNoAudio = path.join(runDir, 'video', 'video_no_audio.mp4');
   const finalVideo = path.join(runDir, 'final', 'final_video_with_audio.mp4');
   await attachAudioToVideo({
@@ -149,16 +148,17 @@ export async function runFullPipeline({
     audioPath: mixedPath,
     outputPath: finalVideo,
   });
-  onProgress?.(97, 'Audio Attached');
 
   // 8. Burn Subtitles
-  onProgress?.(99, 'Burning Subtitles');
+  onProgress?.(95, 'Burning Subtitles');
   const finalWithSubs = path.join(runDir, 'final', 'final_video_with_audio_and_subs.mp4');
   await burnSubtitles({
     videoPath: finalVideo,
     assPath: srtPath,
     outputPath: finalWithSubs,
   });
+
+  // 9. Done
   onProgress?.(100, 'Done');
 
   return finalWithSubs;

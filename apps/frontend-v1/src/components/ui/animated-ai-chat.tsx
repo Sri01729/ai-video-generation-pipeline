@@ -17,6 +17,7 @@ import {
     LoaderIcon,
     Sparkles,
     Command,
+    VideoIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as React from "react"
@@ -26,6 +27,9 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+
+import { useRouter } from "next/navigation";
+import { SparklesText } from "@/components/ui/sparkles-text";
 
 interface UseAutoResizeTextareaProps {
     minHeight: number;
@@ -140,11 +144,11 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 )
 Textarea.displayName = "Textarea"
 
-export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload: { prompt: string, model: string, maxLength: number, provider?: string }) => Promise<void>, loading?: boolean }) {
-    console.log('AnimatedAIChat loading:', loading, 'onGenerate:', typeof onGenerate);
+export function AnimatedAIChat() {
     const [value, setValue] = useState("");
     const [attachments, setAttachments] = useState<string[]>([]);
     const [model, setModel] = useState("gpt-4.1-nano");
+    const [voice, setVoice] = useState<string | undefined>(undefined);
     const [activeSuggestion, setActiveSuggestion] = useState<number>(-1);
     const [showCommandPalette, setShowCommandPalette] = useState(false);
     const [recentCommand, setRecentCommand] = useState<string | null>(null);
@@ -155,31 +159,50 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
     });
     const [inputFocused, setInputFocused] = useState(false);
     const commandPaletteRef = useRef<HTMLDivElement>(null);
+    const [jobId, setJobId] = useState<string | null>(null);
+    const [videoUrl, setVideoUrl] = useState<string | null>(null);
+    const [lastPrompt, setLastPrompt] = useState<string>("");
+    const router = useRouter();
+    const [loading, setLoading] = useState(false);
+    const [isFading, setIsFading] = useState(false);
+    const [improving, setImproving] = useState(false);
 
     const commandSuggestions: CommandSuggestion[] = [
         {
-            icon: <ImageIcon className="w-4 h-4" />,
-            label: "Clone UI",
-            description: "Generate a UI from a screenshot",
-            prefix: "/clone"
+            icon: <Sparkles className="w-4 h-4" />,
+            label: "Enhance Prompt",
+            description: "Let AI rewrite your prompt for best results",
+            prefix: "/improve"
         },
         {
-            icon: <Figma className="w-4 h-4" />,
-            label: "Import Figma",
-            description: "Import a design from Figma",
-            prefix: "/figma"
+            icon: <SendIcon className="w-4 h-4" />,
+            label: "Quick Video",
+            description: "Generate a short video from your prompt",
+            prefix: "/quick"
         },
         {
             icon: <MonitorIcon className="w-4 h-4" />,
-            label: "Create Page",
-            description: "Generate a new web page",
-            prefix: "/page"
+            label: "Storyboard",
+            description: "Get a storyboard preview before rendering",
+            prefix: "/storyboard"
         },
         {
-            icon: <Sparkles className="w-4 h-4" />,
-            label: "Improve",
-            description: "Improve existing UI design",
-            prefix: "/improve"
+            icon: <FileUp className="w-4 h-4" />,
+            label: "Upload Script",
+            description: "Upload your own script for video generation",
+            prefix: "/upload"
+        },
+        {
+            icon: <ImageIcon className="w-4 h-4" />,
+            label: "Custom Thumbnail",
+            description: "Generate a thumbnail for your video",
+            prefix: "/thumbnail"
+        },
+        {
+            icon: <Figma className="w-4 h-4" />,
+            label: "Change Style",
+            description: "Switch video style (cartoon, cinematic, etc)",
+            prefix: "/style"
         },
     ];
 
@@ -265,11 +288,33 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
     };
 
     const handleGenerate = async () => {
-        console.log('handleGenerate called', { value, loading });
-        if (value.trim() && !loading) {
-            const provider = model.startsWith("gpt-") ? "openai" : undefined;
-            console.log('Calling onGenerate with', { prompt: value.trim(), model, maxLength: 1000, provider });
-            await onGenerate?.({ prompt: value.trim(), model, maxLength: 1000, provider });
+        if (value.trim()) {
+            setLoading(true);
+            try {
+                const provider = model.startsWith("gpt-") ? "openai" : undefined;
+                const body: any = { prompt: value.trim(), model, maxLength: 1000, provider };
+                if (voice) body.voice = voice;
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/video/job`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body),
+                });
+                if (!res.ok) throw new Error('Request failed');
+                const data = await res.json();
+                if (data && data.jobId) {
+                    setIsFading(true);
+                    setTimeout(() => {
+                        router.push(`/home/pipeline-status?jobId=${encodeURIComponent(data.jobId)}&prompt=${encodeURIComponent(value.trim())}`);
+                    }, 600); // 600ms fade duration
+                } else {
+                    throw new Error('No jobId returned');
+                }
+            } catch (err) {
+                alert("Failed to start video generation. Please try again.");
+                console.error('handleGenerate error', err);
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
@@ -291,8 +336,33 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
         setTimeout(() => setRecentCommand(null), 2000);
     };
 
+    const handleImprove = async () => {
+        if (!value.trim()) return;
+        setImproving(true);
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/improve-prompt`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: value })
+            });
+            const data = await res.json();
+            if (data.improved) setValue(data.improved);
+        } catch (err) {
+            // Optionally handle error
+        } finally {
+            setImproving(false);
+        }
+    };
+
+    useEffect(() => {
+        adjustHeight();
+    }, [value, adjustHeight]);
+
     return (
-        <div className="min-h-screen flex flex-col w-full items-center justify-center bg-transparent text-foreground p-6 relative overflow-hidden">
+        <div className={cn(
+            "h-screen flex flex-col w-full items-center justify-center bg-transparent text-foreground p-6 py-8 relative overflow-hidden",
+            isFading && "opacity-0 transition-opacity duration-700"
+        )}>
         <div className="absolute inset-0 w-full h-full overflow-hidden">
                 <div className="absolute top-0 left-1/4 w-96 h-96 bg-white/10 rounded-full mix-blend-normal filter blur-[128px] animate-pulse" />
                 <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-white/10 rounded-full mix-blend-normal filter blur-[128px] animate-pulse delay-700" />
@@ -300,7 +370,7 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
             </div>
             <div className="w-full max-w-2xl mx-auto relative">
                 <motion.div
-                    className="relative z-10 space-y-12"
+                    className="relative z-10 space-y-6"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut" }}
@@ -312,8 +382,15 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
                             transition={{ delay: 0.2, duration: 0.5 }}
                             className="inline-block"
                         >
-                            <h1 className="text-3xl font-medium tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground pb-1">
-                                How can I help today?
+                            <h1 className="text-3xl font-medium tracking-tight pb-1">
+                                <span className="bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground">
+                                    Welcome to
+                                </span>{" "}
+                                <SparklesText
+                                    text="Maaya"
+                                    className="inline text-3xl font-medium tracking-tight"
+                                    colors={{ first: "#000", second: "#fff" }}
+                                />
                             </h1>
                             <motion.div
                                 className="h-px bg-gradient-to-r from-transparent via-border to-transparent"
@@ -328,7 +405,7 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.3 }}
                         >
-                            Type a command or ask a question
+                            Instantly generate AI-powered videos from your ideas, scripts, or commands.
                         </motion.p>
                     </div>
 
@@ -378,54 +455,90 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
                         </AnimatePresence>
 
                         <div className="p-4 flex flex-col gap-2">
-                            <Textarea
-                                ref={textareaRef}
-                                value={value}
-                                onChange={(e) => {
-                                    setValue(e.target.value);
-                                    adjustHeight();
-                                }}
-                                onKeyDown={handleKeyDown}
-                                onFocus={() => setInputFocused(true)}
-                                onBlur={() => setInputFocused(false)}
-                                placeholder="Type your prompt here..."
-                                containerClassName="w-full"
-                                className={cn(
-                                    "w-full px-4 py-3",
-                                    "resize-none",
-                                    "bg-transparent",
-                                    "border-none",
-                                    "text-foreground text-sm",
-                                    "focus:outline-none",
-                                    "placeholder:text-muted-foreground",
-                                    "min-h-[60px]"
-                                )}
-                                style={{
-                                    overflow: "hidden",
-                                }}
-                                showRing={false}
-                            />
+                            <div className="relative w-full">
+                                <Textarea
+                                    ref={textareaRef}
+                                    value={value}
+                                    onChange={(e) => {
+                                        setValue(e.target.value);
+                                        adjustHeight();
+                                    }}
+                                    onKeyDown={handleKeyDown}
+                                    onFocus={() => setInputFocused(true)}
+                                    onBlur={() => setInputFocused(false)}
+                                    placeholder="Describe your video idea, paste a script, or try a command…"
+                                    containerClassName="w-full"
+                                    className={cn(
+                                        "w-full px-4 py-3",
+                                        "resize-none",
+                                        "bg-transparent",
+                                        "border-none",
+                                        "text-foreground text-sm",
+                                        "focus:outline-none",
+                                        "placeholder:text-muted-foreground",
+                                        "min-h-[60px]",
+                                        "max-h-[200px]",
+                                        "overflow-auto"
+                                    )}
+                                    showRing={false}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleImprove}
+                                    disabled={improving || !value.trim()}
+                                    className={cn(
+                                        "absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full",
+                                        "bg-white/80 dark:bg-black/60 border border-border shadow-md",
+                                        "hover:bg-white dark:hover:bg-black hover:shadow-lg",
+                                        "transition disabled:opacity-50"
+                                    )}
+                                    aria-label="Improve prompt"
+                                >
+                                    {improving ? (
+                                        <LoaderIcon className="w-5 h-5 animate-spin text-muted-foreground" />
+                                    ) : (
+                                        <Sparkles className="w-5 h-5 text-muted-foreground hover:text-foreground transition" />
+                                    )}
+                                </button>
+                            </div>
                         </div>
 
                         <div className="p-4 border-t border-border flex items-center justify-between gap-4">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <button className="px-3 py-1 rounded-md border bg-background text-sm font-medium flex items-center gap-2 hover:bg-muted transition-colors">
-                                        {model}
-                                    </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-44">
-                                    <DropdownMenuItem onClick={() => setModel("gpt-4.1-nano")}>gpt-4.1-nano</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setModel("gpt-3.5-turbo")}>gpt-3.5-turbo</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setModel("gpt-4")}>gpt-4</DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                            <div className="flex items-center gap-2">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <button className="px-3 py-1 rounded-md border bg-background text-sm font-medium flex items-center gap-2 hover:bg-muted transition-colors">
+                                            {model}
+                                        </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-44">
+                                        <DropdownMenuItem onClick={() => setModel("gpt-4.1-nano")}>gpt-4.1-nano</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setModel("gpt-3.5-turbo")}>gpt-3.5-turbo</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setModel("gpt-4")}>gpt-4</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <button className={cn(
+                                            "px-3 py-1 rounded-md border bg-background text-sm font-medium flex items-center gap-2 hover:bg-muted transition-colors",
+                                            !voice && "text-muted-foreground"
+                                        )}>
+                                            {voice ? voice : "Select voice model"}
+                                        </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-44">
+                                        {["alloy","ash","ballad","coral","echo","fable","nova","onyx","sage","shimmer"].map(v => (
+                                            <DropdownMenuItem key={v} onClick={() => setVoice(v)}>{v}</DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
                             <motion.button
                                 type="button"
                                 onClick={handleGenerate}
                                 whileHover={{ scale: 1.01 }}
                                 whileTap={{ scale: 0.98 }}
-                                disabled={loading || !value.trim()}
+                                disabled={!value.trim()}
                                 className={cn(
                                     "px-4 py-2 rounded-lg text-sm font-medium transition-all",
                                     "flex items-center gap-2",
@@ -434,11 +547,7 @@ export function AnimatedAIChat({ onGenerate, loading }: { onGenerate?: (payload:
                                         : "bg-muted text-muted-foreground"
                                 )}
                             >
-                                {loading ? (
-                                    <LoaderIcon className="w-4 h-4 animate-[spin_2s_linear_infinite]" />
-                                ) : (
-                                    <SendIcon className="w-4 h-4" />
-                                )}
+                                <VideoIcon className="w-4 h-4" />
                                 <span>Generate</span>
                             </motion.button>
                         </div>
@@ -605,4 +714,7 @@ if (typeof document !== 'undefined') {
     style.innerHTML = rippleKeyframes;
     document.head.appendChild(style);
 }
+
+
+
 export default AnimatedAIChat;

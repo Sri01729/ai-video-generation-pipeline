@@ -1,4 +1,6 @@
+import path from 'path';
+
 export const outputConfig = {
-  baseDir: 'results/test_output',
+  baseDir: path.resolve(process.cwd(), 'results'),
   subfolders: ['script', 'audio','final', 'images', 'video', 'subtitles'],
 };

@@ -9,8 +9,6 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   console.log('Sidebar rendered');
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
   // Use env variable for backend API URL
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
   return (
@@ -22,30 +20,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         </button>
       </div>
       {isOpen && (
-        <AnimatedAIChat
-          loading={loading}
-          onGenerate={async ({ prompt, model, maxLength, provider }) => {
-            setLoading(true);
-            try {
-              console.log('Sidebar onGenerate called', { prompt, model, maxLength, provider });
-              const res = await fetch(`${apiUrl}/api/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, model, maxLength, ...(provider ? { provider } : {}) }),
-              });
-              console.log('Sidebar fetch response', res);
-              if (!res.ok) throw new Error('Request failed');
-              const blob = await res.blob();
-              const url = URL.createObjectURL(blob);
-              router.push(`/home/videoplayer?src=${encodeURIComponent(url)}`);
-            } catch (err) {
-              // Optionally handle error
-              console.error('Sidebar onGenerate error', err);
-            } finally {
-              setLoading(false);
-            }
-          }}
-        />
+        <AnimatedAIChat />
       )}
     </div>
   );
