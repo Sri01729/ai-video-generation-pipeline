@@ -20,6 +20,29 @@ interface ModelslabVideoConfig {
   // ...add more as needed
 }
 
+// Helper: download with retry on 404
+async function downloadWithRetry(url: string, outPath: string, maxAttempts = 5, delayMs = 3000) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const videoRes = await axios.get(url, { responseType: 'arraybuffer' });
+      await fs.writeFile(outPath, videoRes.data);
+      return true;
+    } catch (err: any) {
+      if (err.response && err.response.status === 404) {
+        if (attempt < maxAttempts) {
+          console.warn(`[Modelslab] Video not found (404). Retrying in ${delayMs / 1000}s... (attempt ${attempt})`);
+          await new Promise(res => setTimeout(res, delayMs));
+        } else {
+          throw new Error('[Modelslab] Video still not available after retries (404).');
+        }
+      } else {
+        throw err;
+      }
+    }
+  }
+  return false;
+}
+
 /**
  * Generate a video from text using Modelslab's Text-to-Video API.
  * @returns The local file path and remote URL of the generated video.
@@ -28,24 +51,28 @@ export async function modelslabTextToVideoGenerator({
   key,
   model_id = 'cogvideox',
   prompt,
-  negative_prompt = '',
+  negative_prompt = 'blurry, low quality, pixelated, deformed, mutated, disfigured, bad anatomy, extra limbs, missing limbs, unrealistic motion, glitch, noisy, oversaturated, underexposed, overexposed, poor lighting, low contrast, unnatural colors, jpeg artifacts, watermark, text, signature, cut off, cropped, stretched, distorted face, bad proportions, duplicated limbs, broken body, grain, flickering, frame skipping, motion blur, unrealistic shadows, low detail, low resolution, compression artifacts, out of frame',
   height = 512,
   width = 512,
-  num_frames = 16,
-  num_inference_steps = 20,
-  guidance_scale = 7,
+  num_frames = 81,
+  num_inference_steps = 25,
+  guidance_scale = 5,
+  resolution = 480,
   output_type = 'mp4',
   seed = null,
-  portrait,
-  resolution = 480,
   fps = 16,
   ...rest
 }: ModelslabVideoConfig & { outDir?: string }) {
+  // Auto-load API key from env if not provided
+  const apiKey = key || process.env.MODELSLAB_VIDEO_API_KEY;
+  if (!apiKey) {
+    throw new Error('Modelslab API key not provided. Set MODELSLAB_VIDEO_API_KEY in your environment or pass key explicitly.');
+  }
   const outDir = rest.outDir || path.resolve(process.cwd(), 'results', 'modelslab-videos');
   await fs.mkdir(outDir, { recursive: true });
 
   const body = {
-    key,
+    key: apiKey,
     model_id,
     prompt,
     negative_prompt,
@@ -56,8 +83,6 @@ export async function modelslabTextToVideoGenerator({
     guidance_scale,
     output_type,
     seed,
-    portrait,
-    resolution,
     fps,
     ...rest,
   };
@@ -80,8 +105,7 @@ export async function modelslabTextToVideoGenerator({
     const outPath = path.join(outDir, filename);
     console.log('[Modelslab] Downloading video:', videoUrl);
     try {
-      const videoRes = await axios.post(videoUrl, {}, { responseType: 'arraybuffer' });
-      await fs.writeFile(outPath, videoRes.data);
+      await downloadWithRetry(videoUrl, outPath);
       console.log('[Modelslab] Video saved to:', outPath);
       return { outPath, videoUrl };
     } catch (err) {
@@ -102,10 +126,13 @@ export async function modelslabTextToVideoGenerator({
         const filename = `modelslab_${Date.now()}.${output_type}`;
         const outPath = path.join(outDir, filename);
         console.log('[Modelslab] Downloading video:', videoUrl);
-        const videoRes = await axios.post(videoUrl, {}, { responseType: 'arraybuffer' });
-        await fs.writeFile(outPath, videoRes.data);
-        console.log('[Modelslab] Video saved to:', outPath);
-        return { outPath, videoUrl };
+        try {
+          await downloadWithRetry(videoUrl, outPath);
+          console.log('[Modelslab] Video saved to:', outPath);
+          return { outPath, videoUrl };
+        } catch (err) {
+          throw new Error('[Modelslab] Failed to download video: ' + (err instanceof Error ? err.message : String(err)));
+        }
       } else if (pollData.status === 'error') {
         throw new Error('[Modelslab] Video generation failed: ' + pollData.message);
       } else {

@@ -123,21 +123,30 @@ export async function runFullPipeline({
   await transcribeAndGenerateSrt(mixedPath, srtPath);
 
   // 5. Script-to-Image Generation
-  onProgress?.(65, 'Image Generation');
+  // onProgress?.(65, 'Image Generation');
+  // const imageOutDir = path.join(runDir, 'images');
+  // const { provider: imgProvider, model: imgModel, apiKey } = IMAGE_PROMPT_CONFIGS[0];
+  // const generator = new ScriptImageGenerator(apiKey, imageOutDir);
+  // await generator.generateImagesFromScript(
+  //   script,
+  //   '',
+  //   true,
+  //   imgProvider as 'openai' | 'google' | 'anthropic' | 'cohere',
+  //   imgModel
+  // );
+
+  // --- Modelslab video generation (replaces image generation) ---
+  // Commented out image generation above
   const imageOutDir = path.join(runDir, 'images');
-  const { provider: imgProvider, model: imgModel, apiKey } = IMAGE_PROMPT_CONFIGS[0];
-  const generator = new ScriptImageGenerator(apiKey, imageOutDir);
-  await generator.generateImagesFromScript(
-    script,
-    '',
-    true,
-    imgProvider as 'openai' | 'google' | 'anthropic' | 'cohere',
-    imgModel
-  );
+  const { default: ScriptToModelslabVideoGenerator } = await import('./pipeline/images/scriptToModelslabVideoGenerator');
+  const videoGenerator = new ScriptToModelslabVideoGenerator(undefined, imageOutDir);
+  await videoGenerator.generateVideosFromScript(script);
 
   // 6. Video Assembly
   onProgress?.(80, 'Video Assembly');
-  execSync(`npx ts-node ${path.join(__dirname, './pipeline/video/stitchImagesToVideo.ts')}`, { stdio: 'inherit' });
+  // execSync(`npx ts-node ${path.join(__dirname, './pipeline/video/stitchImagesToVideo.ts')}`, { stdio: 'inherit' }); // Old image-based stitcher
+  // New: Modelslab video-based stitcher
+  execSync(`npx ts-node ${path.join(__dirname, './pipeline/video/stitchVideosToVideo.ts')}`, { stdio: 'inherit' });
 
   // 7. Attach Audio to Video
   onProgress?.(90, 'Attaching Audio');
