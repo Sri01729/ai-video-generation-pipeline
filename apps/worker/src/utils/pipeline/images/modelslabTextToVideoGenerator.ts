@@ -52,8 +52,7 @@ export async function modelslabTextToVideoGenerator({
   model_id = 'cogvideox',
   prompt,
   negative_prompt = 'blurry, low quality, pixelated, deformed, mutated, disfigured, bad anatomy, extra limbs, missing limbs, unrealistic motion, glitch, noisy, oversaturated, underexposed, overexposed, poor lighting, low contrast, unnatural colors, jpeg artifacts, watermark, text, signature, cut off, cropped, stretched, distorted face, bad proportions, duplicated limbs, broken body, grain, flickering, frame skipping, motion blur, unrealistic shadows, low detail, low resolution, compression artifacts, out of frame',
-  height = 512,
-  width = 512,
+  portrait = true,
   num_frames = 81,
   num_inference_steps = 25,
   guidance_scale = 5,
@@ -61,8 +60,10 @@ export async function modelslabTextToVideoGenerator({
   output_type = 'mp4',
   seed = null,
   fps = 16,
+  webhook = null,
+  track_id = null,
   ...rest
-}: ModelslabVideoConfig & { outDir?: string }) {
+}: ModelslabVideoConfig & { outDir?: string, webhook?: string | null, track_id?: string | null }) {
   // Auto-load API key from env if not provided
   const apiKey = key || process.env.MODELSLAB_VIDEO_API_KEY;
   if (!apiKey) {
@@ -76,14 +77,15 @@ export async function modelslabTextToVideoGenerator({
     model_id,
     prompt,
     negative_prompt,
-    height,
-    width,
+    portrait,
     num_frames,
     num_inference_steps,
     guidance_scale,
     output_type,
     seed,
     fps,
+    webhook,
+    track_id,
     ...rest,
   };
 

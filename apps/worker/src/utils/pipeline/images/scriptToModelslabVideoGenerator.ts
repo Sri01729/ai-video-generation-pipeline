@@ -5,6 +5,7 @@ import { modelslabTextToVideoGenerator } from './modelslabTextToVideoGenerator';
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import slugify from 'slugify';
+import crypto from 'crypto';
 
 interface Scene {
   id: number;
@@ -55,10 +56,10 @@ You are a **visual-scene breakdown engine** that converts a ≈1 000-character (
 ────────────────────────────
 GLOBAL SCENE & LENGTH RULES
 ────────────────────────────
-• Always output **12 chunks** (no more, no less).
+• Always output **5 chunks** (no more, no less).
 • Each chunk = one complete visual beat lasting **≈5 seconds**.
 • Aim for **75-90 characters** (≈13-15 words) per chunk so narration fits 5 s at 150 wpm.
-• Do NOT merge different ideas or split one idea across chunks. Stop when 12 chunks are made.
+• Do NOT merge different ideas or split one idea across chunks. Stop when 5 chunks are made.
 
 ────────────────────────────
 CHARACTER CONSISTENCY
@@ -104,7 +105,7 @@ Return **only** a JSON array (no markdown):
     "prompt":   "<cinematic visual description prefixed with CHARACTER_SIGNATURE>",
     "filename": "<filename-safe, lowercase, hyphenated excerpt ≤50 chars>"
   },
-  … (total 12 objects)
+  … (total 5 objects)
 ]
 `;
 
@@ -152,10 +153,14 @@ Return **only** a JSON array (no markdown):
     } catch (err) {
       throw new Error('Failed to get scene prompts: ' + (err instanceof Error ? err.message : err));
     }
-    const limitedScenePrompts = scenePrompts.slice(0, 12);
+    const limitedScenePrompts = scenePrompts.slice(0, 5);
     // Generate a single random seed for this batch
     const seed = Math.floor(Math.random() * 1e9);
     console.log(`[Modelslab] Using seed for all videos: ${seed}`);
+    // Generate a unique track_id for this job
+    const track_id = crypto.randomUUID();
+    // Get webhook URL from env or fallback
+    const webhookUrl = process.env.MODELSLAB_WEBHOOK_URL || 'https://yourdomain.com/api/modelslab-webhook';
     // SERIAL video generation to avoid rate limits
     const videoResults: (VideoResult | null)[] = [];
     for (let idx = 0; idx < limitedScenePrompts.length; idx++) {
@@ -168,6 +173,8 @@ Return **only** a JSON array (no markdown):
           ...modelslabConfig,
           seed, // use the same seed for all videos
           outDir: this.outputDir,
+          webhook: webhookUrl,
+          track_id,
         });
         console.log(`[Video] Scene ${idx + 1} generated: ${outPath}`);
         videoResults.push({

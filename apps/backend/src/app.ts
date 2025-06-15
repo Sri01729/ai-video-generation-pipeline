@@ -193,6 +193,13 @@ app.use('/api/plugins/script', scriptRouter);
 app.use('/api/plugins/voice', voiceRouter);
 app.use('/api/plugins/image', imageRouter);
 
+// Modelslab Webhook Handler
+app.post('/api/modelslab-webhook', async (req, res) => {
+  console.log('[Modelslab Webhook] Received payload:', req.body);
+  // TODO: Notify worker or update job state here
+  res.status(200).send('ok');
+});
+
 // Error logging (should be after all routes)
 app.use((err: Error, _req: Request, res: Response, _next: Function) => {
   logger.error(err.stack || err.message);

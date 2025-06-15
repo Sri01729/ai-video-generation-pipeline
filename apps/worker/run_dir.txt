@@ -1,1 +1,1 @@
-/Users/srinualahari/Documents/Projects/AI-Video-generation/ai-video-generation-pipeline/apps/worker/results/generate_narration_Jun14_12-17pm
+/Users/srinualahari/Documents/Projects/AI-Video-generation/ai-video-generation-pipeline/apps/worker/results/create_pixelated_Jun15_11-55am
